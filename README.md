@@ -35,17 +35,17 @@ $ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go 5000
 
 $ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go "5000 999999ms"
 5000 999999ms
-		   ^
+            ^
 error: invalid unit order
 
 $ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go "1d 1f"
 1d 1f
-	^
+    ^
 error: invalid unit
 
 $ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go "1d 1d"
 1d 1d
-	^
+    ^
 error: invalid unit order
 
 $ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go "1d 5m 1230ms"
@@ -56,6 +56,6 @@ $ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go "1d 5m 0 9999999
 
 $ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go "9223372037s"
 9223372037s
-		  ^
+          ^
 error: underflow
 ```
