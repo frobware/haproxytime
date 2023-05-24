@@ -51,8 +51,9 @@ error: invalid unit order
 $ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go "1d 5m 1230ms"
 86701230
 
-$ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go "1d 5m 0 999999999us"
-87699999
+# Note: Spaces are optional.
+$ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go "1d5m"
+86700000
 
 $ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go "9223372037s"
 9223372037s
