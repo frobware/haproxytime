@@ -44,7 +44,7 @@ func TestParseDuration(t *testing.T) {
 	}, {
 		description: "valid test with spaces",
 		input:       "1d 3h 30m 45s 100ms 200us",
-		duration:    time.Hour*27 + time.Minute*30 + time.Second*45 + time.Millisecond*100 + time.Microsecond*200,
+		duration:    27*time.Hour + 30*time.Minute + 45*time.Second + 100*time.Millisecond + 200*time.Microsecond,
 	}, {
 		description: "valid test with no space",
 		input:       "1d3h30m45s100ms200us",
@@ -57,10 +57,6 @@ func TestParseDuration(t *testing.T) {
 		description: "test with no unit (assume milliseconds)",
 		input:       "5000",
 		duration:    5000 * time.Millisecond,
-	}, {
-		description: "test with no unit (assume milliseconds), and repeated milliseconds",
-		input:       "5000 100ms",
-		error:       "invalid unit order",
 	}, {
 		description: "test with no unit (assume milliseconds), followed by another millisecond value",
 		input:       "5000 100ms",
