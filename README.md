@@ -1,4 +1,4 @@
-# haproxytime - parse duration, including support for days ("d")
+# parse time durations, with support for days
 
 This is a Go library that parses duration strings in a format similar
 to time.ParseDuration, with the additional capability of handling
@@ -11,7 +11,7 @@ The CLI utility `haproxy-timeout-checker` is an example of using the
 package. It validates the time duration using `ParseDuration` and also
 checks to see if the duration exceeds HAProxy's maximum.
 
-```sh
+```console
 $ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go "9223372036s"
 duration 9223372036000ms exceeds HAProxy's maximum value of 2147483647ms
 
@@ -54,8 +54,8 @@ $ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go "1d 5m 1230ms"
 $ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go "1d 5m 0 999999999us"
 87699999
 
-$ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go "9223372037s"        
+$ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go "9223372037s"
 9223372037s
-          ^
+		  ^
 error: underflow
 ```
