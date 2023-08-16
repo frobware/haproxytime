@@ -1,182 +1,562 @@
 package haproxytime_test
 
 import (
+	"errors"
+	"fmt"
+	"math"
+	"net/http"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/frobware/haproxytime"
 )
 
-func TestParseDuration(t *testing.T) {
-	testCases := []struct {
-		description string
-		input       string
-		duration    time.Duration
-		error       string
+func init() {
+	// ListenAndServe used by the Makefile target
+	// benchmark-profile only.
+	go func() {
+		if port := os.Getenv("BENCHMARK_PROFILE_PORT"); port != "" {
+			if err := http.ListenAndServe("localhost:"+port, nil); err != nil {
+				panic(err)
+			}
+		}
+	}()
+}
+
+// TestSyntaxError_Error ensures that the error message produced by a
+// SyntaxError provides accurate and clear information about the
+// syntax issue encountered. The test crafts a duration string known
+// to cause a syntax error and then verifies that the SyntaxError
+// generated details the correct position and nature of the error.
+func TestSyntaxError_Error(t *testing.T) {
+	tests := []struct {
+		input            string
+		expectedPosition int
+		expectedCause    haproxytime.SyntaxErrorCause
+		expectedErrorMsg string
+		parseMode        haproxytime.ParseMode
 	}{{
-		description: "test with empty string",
-		input:       "",
-		duration:    0,
+		input:            "1h1x",
+		expectedPosition: 4,
+		expectedCause:    haproxytime.InvalidUnit,
+		expectedErrorMsg: "syntax error at position 4: invalid unit",
+		parseMode:        haproxytime.ParseModeMultiUnit,
 	}, {
-		description: "test with string that is just spaces",
-		input:       "   ",
-		duration:    0,
+		input:            "xx1h",
+		expectedPosition: 1,
+		expectedCause:    haproxytime.InvalidNumber,
+		expectedErrorMsg: "syntax error at position 1: invalid number",
+		parseMode:        haproxytime.ParseModeMultiUnit,
 	}, {
-		description: "test for zero",
-		input:       "0",
-		duration:    0,
+		input:            "1m1h",
+		expectedPosition: 4,
+		expectedCause:    haproxytime.InvalidUnitOrder,
+		expectedErrorMsg: "syntax error at position 4: invalid unit order",
+		parseMode:        haproxytime.ParseModeMultiUnit,
 	}, {
-		description: "invalid number",
-		input:       "a",
-		error:       "invalid number",
-	}, {
-		description: "invalid number",
-		input:       "/",
-		error:       "invalid number",
-	}, {
-		description: "invalid number, because the 100 defaults to 100ms",
-		input:       "100.d",
-		error:       "invalid number",
-	}, {
-		description: "invalid unit",
-		input:       "1d 30mgarbage",
-		error:       "invalid unit",
-	}, {
-		description: "valid test with spaces",
-		input:       "1d 3h 30m 45s 100ms 200us",
-		duration:    27*time.Hour + 30*time.Minute + 45*time.Second + 100*time.Millisecond + 200*time.Microsecond,
-	}, {
-		description: "valid test with no space",
-		input:       "1d3h30m45s100ms200us",
-		duration:    27*time.Hour + 30*time.Minute + 45*time.Second + 100*time.Millisecond + 200*time.Microsecond,
-	}, {
-		description: "test with leading and trailing spaces",
-		input:       "  1d   3h   30m   45s   ",
-		duration:    27*time.Hour + 30*time.Minute + 45*time.Second,
-	}, {
-		description: "test with no unit (assume milliseconds)",
-		input:       "5000",
-		duration:    5000 * time.Millisecond,
-	}, {
-		description: "test with no unit (assume milliseconds), followed by another millisecond value",
-		input:       "5000 100ms",
-		error:       "invalid unit order",
-	}, {
-		description: "test number with leading zeros",
-		input:       "000000000000000000000001 01us",
-		duration:    time.Millisecond + time.Microsecond,
-	}, {
-		description: "test for zero milliseconds",
-		input:       "0ms",
-		duration:    0,
-	}, {
-		description: "test all units as zero",
-		input:       "0d 0h 0m 0s 0ms 0us",
-		duration:    0,
-	}, {
-		description: "test all units as zero with implicit milliseconds",
-		input:       "0d 0h 0m 0s 0 0us",
-		duration:    0,
-	}, {
-		description: "test with all zeros, and trailing 0 with no unit but ms has already been specified",
-		input:       "0d 0h 0m 0s 0ms 0",
-		error:       "invalid unit order",
-	}, {
-		description: "test 1 millisecond",
-		input:       "0d 0h 0m 0s 1",
-		duration:    time.Millisecond,
-	}, {
-		description: "test duplicate units",
-		input:       "0ms 0ms",
-		error:       "invalid unit order",
-	}, {
-		description: "test out of order units, hours cannot follow minutes",
-		input:       "1d 5m 1h",
-		error:       "invalid unit order",
-	}, {
-		description: "test skipped units",
-		input:       "1d 100us",
-		duration:    24*time.Hour + 100*time.Microsecond,
-	}, {
-		description: "test maximum number of seconds",
-		input:       "9223372036s",
-		duration:    9223372036 * time.Second,
-	}, {
-		description: "test overflow",
-		input:       "9223372036s 1000ms",
-		error:       "overflow",
-	}, {
-		description: "test underflow",
-		input:       "9223372037s",
-		error:       "underflow",
+		input:            "1h1m1h",
+		expectedPosition: 3,
+		expectedCause:    haproxytime.UnexpectedCharactersInSingleUnitMode,
+		expectedErrorMsg: "syntax error at position 3: unexpected characters in single unit mode",
+		parseMode:        haproxytime.ParseModeSingleUnit,
 	}}
 
-	for _, tc := range testCases {
-		t.Run(tc.description, func(t *testing.T) {
-			got, _, err := haproxytime.ParseDuration(tc.input)
-			if err != nil && err.Error() != tc.error {
-				t.Errorf("%q: wanted error %q, got %q", tc.input, tc.error, err)
+	for _, tc := range tests {
+		t.Run(tc.input, func(t *testing.T) {
+			_, err := haproxytime.ParseDuration(tc.input, haproxytime.UnitMillisecond, tc.parseMode)
+
+			if !errors.Is(err, &haproxytime.SyntaxError{}) {
+				t.Errorf("Expected a SyntaxError, but got %T", err)
 				return
 			}
-			if got != tc.duration {
-				t.Errorf("%q: wanted value %q, got %q", tc.input, tc.duration, got)
+
+			syntaxErr := err.(*haproxytime.SyntaxError)
+
+			if syntaxErr.Error() != tc.expectedErrorMsg {
+				t.Errorf("expected %q, but got %q", tc.expectedErrorMsg, syntaxErr.Error())
+			}
+
+			if syntaxErr.Position() != tc.expectedPosition-1 {
+				t.Errorf("expected SyntaxError at position %v, but got %v", tc.expectedPosition-1, syntaxErr.Position())
+			}
+
+			if syntaxErr.Cause() != tc.expectedCause {
+				t.Errorf("expected SyntaxError cause to be %v, but got %v", tc.expectedCause, syntaxErr.Cause())
 			}
 		})
 	}
 }
 
-func FuzzParseDuration(f *testing.F) {
-	f.Add("")
-	f.Add("0")
-	f.Add("0d")
-	f.Add("0ms")
-	f.Add("1000garbage")
-	f.Add("100us")
-	f.Add("10s")
-	f.Add("1d 3h")
-	f.Add("1d")
-	f.Add("1d3h30m45s")
-	f.Add("1h30m")
-	f.Add("5000")
-	f.Add("500ms")
-	f.Add("9223372036s")
+// TestOverflowError_Error validates that the error message produced
+// by an OverflowError accurately represents the cause of the
+// overflow. The test crafts a duration string known to cause an
+// overflow, then ensures that the OverflowError generated reports the
+// correct position and value causing the overflow.
+func TestOverflowError_Error(t *testing.T) {
+	tests := []struct {
+		description string
+		input       string
+		expected    string
+	}{{
+		description: "overflows haproxy max duration",
+		input:       "2147483648ms",
+		expected:    "overflow error at position 1: value exceeds max duration",
+	}, {
+		description: "100 days overflows haproxy max duration",
+		input:       "100d",
+		expected:    "overflow error at position 1: value exceeds max duration",
+	}, {
+		description: "genuine int64 range error",
+		input:       "10000000000000000000",
+		expected:    "overflow error at position 1: value exceeds max duration",
+	}}
 
-	// Values extracted from the unit tests
-	testCases := []string{
-		"",
-		"0",
-		"a",
-		"/",
-		"100.d",
-		"1d 30mgarbage",
-		"1d 3h 30m 45s 100ms 200us",
-		"1d3h30m45s100ms200us",
-		"  1d   3h   30m   45s   ",
-		"5000",
-		"5000 100ms",
-		"5000 100ms",
-		"000000000000000000000001 01us",
-		"0ms",
-		"0d 0h 0m 0s 0ms 0us",
-		"0d 0h 0m 0s 0 0us",
-		"0d 0h 0m 0s 0ms 0",
-		"0d 0h 0m 0s 1",
-		"0ms 0ms",
-		"1d 5m 1h",
-		"1d 100us",
-		"9223372036s",
-		"9223372036s 1000ms",
-		"9223372037s",
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			_, err := haproxytime.ParseDuration(tc.input, haproxytime.UnitMillisecond, haproxytime.ParseModeMultiUnit)
+			if !errors.Is(err, &haproxytime.OverflowError{}) {
+				t.Errorf("expected OverflowError, got %T", err)
+				return
+			}
+
+			overflowErr := err.(*haproxytime.OverflowError)
+
+			if overflowErr.Error() != tc.expected {
+				t.Errorf("expected %q, but got %q", tc.expected, overflowErr.Error())
+			}
+		})
 	}
+}
 
-	for _, tc := range testCases {
-		f.Add(tc)
+// TestParseDurationOverflowErrors verifies the proper handling of
+// overflow errors when parsing duration strings. It ensures that
+// values within the acceptable range do not produce errors, while
+// values exceeding the limits are correctly identified and reported
+// with detailed information, including the problematic number and its
+// position within the input.
+func TestParseDurationOverflowErrors(t *testing.T) {
+	tests := []struct {
+		description    string
+		input          string
+		expectErr      bool
+		expectedErrPos int
+		duration       time.Duration
+	}{{
+		description: "maximum value without overflow (just under the limit)",
+		input:       "2147483647ms",
+		expectErr:   false,
+		duration:    haproxytime.MaxTimeout,
+	}, {
+		description: "maximum value without overflow (using different time units)",
+		input:       "2147483s647ms",
+		expectErr:   false,
+		duration:    2147483*time.Second + 647*time.Millisecond,
+	}, {
+		description: "maximum value without overflow (using different time units)",
+		input:       "35791m23s647ms",
+		expectErr:   false,
+		duration:    35791*time.Minute + 23*time.Second + 647*time.Millisecond,
+	}, {
+		description: "way below the limit",
+		input:       "1000ms",
+		expectErr:   false,
+		duration:    1000 * time.Millisecond,
+	}, {
+		description: "way below the limit",
+		input:       "1s",
+		expectErr:   false,
+		duration:    1 * time.Second,
+	}, {
+		description: "MaxInt32 milliseconds",
+		input:       fmt.Sprintf("%dms", math.MaxInt32),
+		expectErr:   false,
+		duration:    time.Duration(math.MaxInt32) * time.Millisecond,
+	}, {
+		description:    "just over the limit",
+		input:          "2147483648ms",
+		expectErr:      true,
+		expectedErrPos: 1,
+		duration:       0,
+	}, {
+		description:    "over the limit with combined units",
+		input:          "2147483s648ms",
+		expectErr:      true,
+		expectedErrPos: 9,
+		duration:       0,
+	}, {
+		description:    "over the limit (using different time units)",
+		input:          "35791m23s648ms",
+		expectErr:      true,
+		expectedErrPos: 10,
+		duration:       0,
+	}, {
+		description:    "way over the limit",
+		input:          "4294967295ms",
+		expectErr:      true,
+		expectedErrPos: 1,
+		duration:       0,
+	}, {
+		description:    "way, way over the limit",
+		input:          "9223372036855ms",
+		duration:       0,
+		expectErr:      true,
+		expectedErrPos: 1,
+	}, {
+		description:    "maximum value +1 (using different units)",
+		input:          "24d20h31m23s648ms0us",
+		expectErr:      true,
+		expectedErrPos: 13,
+		duration:       0,
+	}, {
+		description:    "MaxInt32+1 milliseconds",
+		input:          fmt.Sprintf("%vms", math.MaxInt32+1),
+		expectErr:      true,
+		expectedErrPos: 1,
+		duration:       0,
+	}, {
+		description:    "MaxInt64 milliseconds",
+		input:          fmt.Sprintf("%vms", math.MaxInt64),
+		expectErr:      true,
+		expectedErrPos: 1,
+		duration:       0,
+	}}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			duration, err := haproxytime.ParseDuration(tc.input, haproxytime.UnitMillisecond, haproxytime.ParseModeMultiUnit)
+
+			if tc.expectErr {
+				if !errors.Is(err, &haproxytime.OverflowError{}) {
+					t.Errorf("Expected an OverflowError, but got %T", err)
+					return
+				}
+
+				overflowErr := err.(*haproxytime.OverflowError)
+
+				// Use a 1-based index in the test
+				// case to avoid inadvertently relying
+				// on the zero value for
+				// expectedPosition.
+				if overflowErr.Position() != tc.expectedErrPos-1 {
+					t.Errorf("Expected OverflowError at position %v, but got %v", tc.expectedErrPos-1, overflowErr.Position())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Didn't expect error for input %q but got %v", tc.input, err)
+					return
+				}
+				if duration != tc.duration {
+					t.Errorf("expected duration %v, but got %v", tc.duration, duration)
+				}
+			}
+		})
 	}
+}
 
-	f.Fuzz(func(t *testing.T, input string) {
-		_, _, err := haproxytime.ParseDuration(input)
+// TestParseDurationSyntaxErrors verifies that duration strings are
+// parsed correctly according to their syntax. It checks various valid
+// and invalid inputs to ensure the parser handles syntax errors
+// appropriately, identifying and reporting any inconsistencies or
+// unsupported formats with a detailed error message and the position
+// of the problematic segment.
+func TestParseDurationSyntaxErrors(t *testing.T) {
+	tests := []struct {
+		description      string
+		input            string
+		expectErr        bool
+		expectedPosition int
+		expectedCause    haproxytime.SyntaxErrorCause
+		duration         time.Duration
+	}{{
+		description: "empty string",
+		input:       "",
+		expectErr:   false,
+		duration:    0,
+	}, {
+		description: "zero milliseconds",
+		input:       "0",
+		expectErr:   false,
+		duration:    0,
+	}, {
+		description: "all units specified",
+		input:       "1d3h30m45s100ms200us",
+		expectErr:   false,
+		duration:    27*time.Hour + 30*time.Minute + 45*time.Second + 100*time.Millisecond + 200*time.Microsecond,
+	}, {
+		description: "default unit",
+		input:       "5000",
+		expectErr:   false,
+		duration:    5000 * time.Millisecond,
+	}, {
+		description: "number with leading zeros",
+		input:       "0101us",
+		expectErr:   false,
+		duration:    101 * time.Microsecond,
+	}, {
+		description: "zero milliseconds",
+		input:       "0ms",
+		expectErr:   false,
+		duration:    0,
+	}, {
+		description: "all units as zero",
+		input:       "0d0h0m0s0ms0us",
+		expectErr:   false,
+		duration:    0,
+	}, {
+		description: "all units as zero with implicit milliseconds",
+		input:       "0d0h0m0s00us",
+		expectErr:   false,
+		duration:    0,
+	}, {
+		description: "1 millisecond",
+		input:       "0d0h0m0s1",
+		expectErr:   false,
+		duration:    time.Millisecond,
+	}, {
+		description: "skipped units",
+		input:       "1d100us",
+		expectErr:   false,
+		duration:    24*time.Hour + 100*time.Microsecond,
+	}, {
+		description: "maximum number of ms",
+		input:       "2147483647",
+		expectErr:   false,
+		duration:    2147483647 * time.Millisecond,
+	}, {
+		description: "maximum number expressed with all units",
+		input:       "24d20h31m23s647ms0us",
+		expectErr:   false,
+		duration:    2147483647 * time.Millisecond,
+	}, {
+		description:      "leading space is not a number",
+		input:            " ",
+		expectErr:        true,
+		expectedPosition: 1,
+		expectedCause:    haproxytime.InvalidNumber,
+		duration:         0,
+	}, {
+		description:      "leading +",
+		input:            "+0",
+		expectErr:        true,
+		expectedPosition: 1,
+		expectedCause:    haproxytime.InvalidNumber,
+		duration:         0,
+	}, {
+		description:      "negative number",
+		input:            "-1",
+		expectErr:        true,
+		expectedPosition: 1,
+		expectedCause:    haproxytime.InvalidNumber,
+		duration:         0,
+	}, {
+		description:      "abc is an invalid number",
+		input:            "abc",
+		expectErr:        true,
+		expectedPosition: 1,
+		expectedCause:    haproxytime.InvalidNumber,
+		duration:         0,
+	}, {
+		description:      "/ is an invalid number",
+		input:            "/",
+		expectErr:        true,
+		expectedPosition: 1,
+		expectedCause:    haproxytime.InvalidNumber,
+		duration:         0,
+	}, {
+		description:      ". is an invalid unit",
+		input:            "100.d",
+		expectErr:        true,
+		expectedPosition: 4,
+		expectedCause:    haproxytime.InvalidUnit,
+		duration:         0,
+	}, {
+		description:      "X is an invalid number after the valid 1d30m",
+		input:            "1d30mX",
+		expectErr:        true,
+		expectedPosition: 6,
+		expectedCause:    haproxytime.InvalidNumber,
+		duration:         0,
+	}, {
+		description:      "Y is an invalid unit after the valid 2d30m and the next digit",
+		input:            "2d30m1Y",
+		expectErr:        true,
+		expectedPosition: 7,
+		expectedCause:    haproxytime.InvalidUnit,
+		duration:         0,
+	}, {
+		description:      "duplicate day unit",
+		input:            "1d1d",
+		expectErr:        true,
+		expectedPosition: 4,
+		expectedCause:    haproxytime.InvalidUnitOrder,
+		duration:         0,
+	}, {
+		description:      "duplicate hour unit",
+		input:            "2d1h1h",
+		expectErr:        true,
+		expectedPosition: 6,
+		expectedCause:    haproxytime.InvalidUnitOrder,
+		duration:         0,
+	}, {
+		description:      "duplicate minute unit",
+		input:            "3d2h1m1m",
+		expectErr:        true,
+		expectedPosition: 8,
+		expectedCause:    haproxytime.InvalidUnitOrder,
+		duration:         0,
+	}, {
+		description:      "duplicate second unit",
+		input:            "4d3h2m1s1s",
+		expectErr:        true,
+		expectedPosition: 10,
+		expectedCause:    haproxytime.InvalidUnitOrder,
+		duration:         0,
+	}, {
+		description:      "duplicate millisecond unit",
+		input:            "5d4h3m2s1ms1ms",
+		expectErr:        true,
+		expectedPosition: 13,
+		expectedCause:    haproxytime.InvalidUnitOrder,
+		duration:         0,
+	}, {
+		description:      "duplicate microsecond unit",
+		input:            "6d5h4m3s2ms1us1us",
+		expectErr:        true,
+		expectedPosition: 16,
+		expectedCause:    haproxytime.InvalidUnitOrder,
+		duration:         0,
+	}, {
+		description:      "milliseconds cannot follow microseconds",
+		input:            "5us1ms",
+		expectErr:        true,
+		expectedPosition: 5,
+		expectedCause:    haproxytime.InvalidUnitOrder,
+		duration:         0,
+	}, {
+		description:      "seconds cannot follow milliseconds",
+		input:            "5ms1s",
+		expectErr:        true,
+		expectedPosition: 5,
+		expectedCause:    haproxytime.InvalidUnitOrder,
+		duration:         0,
+	}, {
+		description:      "minutes cannot follow seconds",
+		input:            "5s1m",
+		expectErr:        true,
+		expectedPosition: 4,
+		expectedCause:    haproxytime.InvalidUnitOrder,
+		duration:         0,
+	}, {
+		description:      "hours cannot cannot follow minutes",
+		input:            "5m1h",
+		expectErr:        true,
+		expectedPosition: 4,
+		expectedCause:    haproxytime.InvalidUnitOrder,
+		duration:         0,
+	}, {
+		description:      "days cannot folow hours",
+		input:            "5h1d",
+		expectErr:        true,
+		expectedPosition: 4,
+		expectedCause:    haproxytime.InvalidUnitOrder,
+		duration:         0,
+	}}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			duration, err := haproxytime.ParseDuration(tc.input, haproxytime.UnitMillisecond, haproxytime.ParseModeMultiUnit)
+
+			if tc.expectErr {
+				if !errors.Is(err, &haproxytime.SyntaxError{}) {
+					t.Errorf("Expected a SyntaxError, but got %T", err)
+					return
+				}
+
+				syntaxErr := err.(*haproxytime.SyntaxError)
+
+				// Use a 1-based index in the test
+				// case to avoid inadvertently relying
+				// on the zero value for
+				// expectedPosition.
+				if syntaxErr.Position() != tc.expectedPosition-1 {
+					t.Errorf("Expected position %v, but got %v", tc.expectedPosition-1, syntaxErr.Position())
+				}
+				if syntaxErr.Cause() != tc.expectedCause {
+					t.Errorf("Expected cause %v, but got %v", tc.expectedCause, syntaxErr.Cause())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Didn't expect error for input %q but got %v", tc.input, err)
+					return
+				}
+				if duration != tc.duration {
+					t.Errorf("expected duration %v, but got %v", tc.duration, duration)
+				}
+			}
+		})
+	}
+}
+
+// How to interpret the benchmark results for:
+//
+// $ go test -bench=. -benchmem [-count=1] [-benchtime=1s]
+// goos: linux
+// goarch: amd64
+// pkg: github.com/frobware/haproxytime
+// cpu: 11th Gen Intel(R) Core(TM) i7-1165G7 @ 2.80GHz
+// BenchmarkParseDurationMultiUnitMode-8   7338422 168.1 ns/op 0 B/op 0 allocs/op
+// BenchmarkParseDurationSingleUnitMode-8 28579370 41.55 ns/op 0 B/op 0 allocs/op
+// PASS
+// ok github.com/frobware/haproxytime 2.648s
+//
+// Here's a breakdown:
+//
+//   - `BenchmarkParseDurationMultiUnitMode-8`: This tells you the
+//     name of the benchmark function that was executed. The `-8`
+//     specifies that the benchmark was run with 8 threads.
+//
+//   - `7338422`: This is the number of iterations that the benchmark
+//     managed to run during its timed execution.
+//
+//   - `168.1 ns/op`: This tells you that each operation (in this case,
+//     a call to `ParseDuration`) took an average of 168.1 nanoseconds.
+//
+//   - `0 B/op`: This indicates that the function did not allocate any
+//     additional bytes of memory per operation. This is often a
+//     crucial factor in performance-sensitive code, so having 0 here
+//     is generally a good sign.
+//
+//   - `0 allocs/op`: This tells you that the function did not make
+//     any heap allocations per operation. Fewer allocations often lead
+//     to faster code and less pressure on the garbage collector, so
+//     this is also a positive indicator.
+//
+//   - `PASS`: This tells you that the benchmark completed successfully
+//     without any errors.
+//
+//   - `ok github.com/frobware/haproxytime 2.648s`: This indicates that
+//     the entire test, including setup, tear-down, and the running of
+//     the benchmark, completed in 2.648s.
+
+func BenchmarkParseDurationMultiUnitMode(b *testing.B) {
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		_, err := haproxytime.ParseDuration("24d20h31m23s647ms", haproxytime.UnitMillisecond, haproxytime.ParseModeMultiUnit)
 		if err != nil {
-			t.Skip()
+			b.Fatal(err)
 		}
-	})
+	}
+}
+
+func BenchmarkParseDurationSingleUnitMode(b *testing.B) {
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		_, err := haproxytime.ParseDuration("2147483647ms", haproxytime.UnitMillisecond, haproxytime.ParseModeSingleUnit)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
 }

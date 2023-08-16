@@ -1,62 +1,64 @@
-# parse time durations, with support for days
+# Parse time durations, with support for days
 
-This is a Go library that parses duration strings in a format similar
-to time.ParseDuration, with the additional capability of handling
-duration strings specifying a number of days ("d"). This functionality
-is not available in the built-in time.ParseDuration function. It also
-differs by not accepting negative values. This package was primarily
-created for validating HAProxy timeout values.
+Package haproxytime provides specialised duration parsing
+functionality with features beyond the standard library's
+time.ParseDuration function. It adds support for extended time units
+such as "days", denoted by "d", and optionally allows the parsing of
+composite durations in a single string like "1d5m200ms".
 
-The CLI utility `haproxy-timeout-checker` is an example of using the
-package. It validates the time duration using `ParseDuration` and also
-checks to see if the duration exceeds HAProxy's maximum.
+Key Features:
+
+- Supports the following time units: "d" (days), "h" (hours), "m"
+  (minutes), "s" (seconds), "ms" (milliseconds), and "us"
+  (microseconds).
+- Capable of parsing composite durations such as
+  "24d20h31m23s647ms".
+- Ensures parsed durations are non-negative.
+- Respects HAProxy's maximum duration limit of 2147483647ms.
+
+The command line utility `haproxytimeout` is an example of using the
+package but also serves to convert human-readable duration values to
+microseconds, suitable for a HAProxy configuration file.
+
+## Build
+
+```sh
+$ make
+```
+
+## Usage
 
 ```console
-$ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go "9223372036s"
-duration 9223372036000ms exceeds HAProxy's maximum value of 2147483647ms
+haproxytimeout - Convert human-readable time durations to millisecond format
 
-$ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go "2147483647ms"
-2147483647
+General Usage:
+  haproxytimeout [-help] [-v]
+  haproxytimeout [-h] [-m] [<duration>]
 
-$ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go "2147483648ms"
-duration 2147483648ms exceeds HAProxy's maximum value of 2147483647ms
+Usage:
+  -help Show usage information
+  -v	Show version information
+  -h	Print duration value in a human-readable format
+  -m	Print the maximum HAProxy timeout value
+  <duration>: value to convert. If omitted, will read from stdin.
 
-$ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go "1d"
-86400000
+The flags [-help] and [-v] are mutually exclusive with any other
+options or duration input.
 
-$ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go "1d 1s"
-86401000
+Available units for time durations:
+  d   days
+  h:  hours
+  m:  minutes
+  s:  seconds
+  ms: milliseconds
+  us: microseconds
 
-$ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go "1d 3h 10m 20s 100ms 9999us"
-97820109
+A duration value without a unit defaults to milliseconds.
 
-$ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go 5000
-5000
+Examples:
+  haproxytimeout -m           -> Print the maximum HAProxy duration.
+  haproxytimeout 2h30m5s      -> Convert duration to milliseconds.
+  haproxytimeout -h 4500000   -> Convert 4500000ms to a human-readable format.
+  echo 150s | haproxytimeout  -> Convert 150 seconds to milliseconds.
 
-$ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go "5000 999999ms"
-5000 999999ms
-            ^
-error: invalid unit order
-
-$ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go "1d 1f"
-1d 1f
-    ^
-error: invalid unit
-
-$ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go "1d 1d"
-1d 1d
-    ^
-error: invalid unit order
-
-$ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go "1d 5m 1230ms"
-86701230
-
-# Note: Spaces are optional.
-$ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go "1d5m"
-86700000
-
-$ go run cmd/haproxy-timeout-checker/haproxy-timeout-checker.go "9223372037s"
-9223372037s
-          ^
-error: underflow
 ```
