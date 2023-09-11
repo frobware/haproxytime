@@ -31,9 +31,9 @@ func (er *emptyStringReader) Read(p []byte) (n int, err error) {
 func TestConvertDuration(t *testing.T) {
 	// We need a constant build version information for the tests
 	// to pass.
-	originalVersion := cmd.BuildVersion
-	defer func() { cmd.BuildVersion = originalVersion }()
-	cmd.BuildVersion = func() string {
+	originalVersion := cmd.Version
+	defer func() { cmd.Version = originalVersion }()
+	cmd.Version = func() string {
 		return "v0.0.0"
 	}
 
@@ -49,7 +49,7 @@ func TestConvertDuration(t *testing.T) {
 		args:           []string{"-v"},
 		expectedExit:   0,
 		expectedStdout: "",
-		expectedStderr: `haproxytimeout: v0.0.0`,
+		expectedStderr: `haproxytimeout v0.0.0`,
 	}, {
 		description:    "Test -m flag",
 		args:           []string{"-m"},

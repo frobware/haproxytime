@@ -13,20 +13,17 @@ import (
 )
 
 // These variable are populated at build time using linker flags, and
-// the overall build version is retrieved via the BuildVersion
-// function.
+// the overall build version is retrieved via the Version function.
 var (
-	buildCommit    string
-	buildDate      string
-	buildGoVersion string
+	buildVersion string
 )
 
-// BuildVersion is a function variable that returns the current build
+// Version is a function variable that returns the current build
 // version. By default, it returns the value of the unexported
 // 'version' variable, which is set during build time. This variable
 // is designed to be overridden for testing purposes.
-var BuildVersion = func() string {
-	return fmt.Sprintf("%s (%s) %s", buildCommit, buildDate, buildGoVersion)
+var Version = func() string {
+	return buildVersion
 }
 
 var Usage = `
@@ -285,7 +282,7 @@ func ConvertDuration(stdin io.Reader, stdout, stderr io.Writer, args []string) i
 	}
 
 	if showVersion {
-		fmt.Fprintf(stderr, "haproxytimeout: %s\n", BuildVersion())
+		fmt.Fprintf(stderr, "haproxytimeout %s\n", Version())
 		return 0
 	}
 

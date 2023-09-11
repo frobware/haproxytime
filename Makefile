@@ -3,7 +3,7 @@ GOVERSION	:= $(shell go version)
 COMMIT		:= $(shell git describe --tags --abbrev=8 --dirty --always --long)
 
 PREFIX		:= main
-LDFLAGS		:= -X '$(PREFIX).buildCommit=$(COMMIT)' -X '$(PREFIX).buildDate=$(DATE)' -X '$(PREFIX).buildGoVersion=$(GOVERSION)'
+LDFLAGS		:= -X '$(PREFIX).buildVersion=$(COMMIT) ($(DATE)) $(GOVERSION)'
 
 build: test lint
 	go build -ldflags "$(LDFLAGS)" -o ./haproxytimeout ./cmd/haproxytimeout
