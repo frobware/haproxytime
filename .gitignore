@@ -22,3 +22,4 @@ go.work
 /haproxytimeout
 /cpu.pprof
 /.idea
+/.direnv/
