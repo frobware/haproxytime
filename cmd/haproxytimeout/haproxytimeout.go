@@ -59,6 +59,42 @@ Examples:
   haproxytimeout -h 4500000   -> Convert 4500000ms to a human-readable format.
   echo 150s | haproxytimeout  -> Convert 150 seconds to milliseconds.`[1:]
 
+// safeFprintf is a wrapper around fmt.Fprintf that performs a
+// formatted write operation to a given io.Writer. It takes the same
+// arguments as fmt.Fprintf: a format string and a variadic list of
+// arguments. If the write operation fails, the function writes an
+// error message to os.Stderr and exits the program with status code
+// 1 (EXIT_FAILURE).
+//
+// Parameters:
+//   - w: the io.Writer to which the output will be written.
+//   - format: the format string.
+//   - a: a variadic list of arguments to be formatted.
+func safeFprintf(w io.Writer, format string, a ...interface{}) {
+	_, err := fmt.Fprintf(w, format, a...)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing to output: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+// safeFprintln is a wrapper around fmt.Fprintln that performs a write
+// operation to a given io.Writer, appending a new line at the end. It
+// takes the same variadic list of arguments as fmt.Fprintln. If the
+// write operation fails, the function writes an error message to
+// os.Stderr and exits the program with status code 1 (EXIT_FAILURE).
+//
+// Parameters:
+//   - w: the io.Writer to which the output will be written.
+//   - a: a variadic list of arguments to be written.
+func safeFprintln(w io.Writer, a ...interface{}) {
+	_, err := fmt.Fprintln(w, a...)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing to output: %v\n", err)
+		os.Exit(1)
+	}
+}
+
 // printErrorWithPosition writes an error message along with its
 // position in the input string to the given Writer. The function
 // prints the error, the input string, and a caret '^' pointing to the
@@ -79,10 +115,10 @@ Examples:
 //	24d20h31m23s647msO000us
 //			 ^
 func printErrorWithPosition(w io.Writer, input string, err error, position int) {
-	fmt.Fprintln(w, err)
-	fmt.Fprintln(w, input)
-	fmt.Fprintf(w, "%"+fmt.Sprint(position)+"s", "")
-	fmt.Fprintln(w, "^")
+	safeFprintln(w, err)
+	safeFprintln(w, input)
+	safeFprintf(w, "%"+fmt.Sprint(position)+"s", "")
+	safeFprintln(w, "^")
 }
 
 // formatDuration takes a time.Duration value and returns a
@@ -161,9 +197,9 @@ func formatDuration(duration time.Duration) string {
 //   - With printHuman=false and duration=86400000ms, the output will be "86400000ms".
 func output(w io.Writer, duration time.Duration, printHuman bool) {
 	if printHuman {
-		fmt.Fprintln(w, formatDuration(duration))
+		safeFprintln(w, formatDuration(duration))
 	} else {
-		fmt.Fprintf(w, "%vms\n", duration.Milliseconds())
+		safeFprintf(w, "%vms\n", duration.Milliseconds())
 	}
 }
 
@@ -272,17 +308,17 @@ func ConvertDuration(stdin io.Reader, stdout, stderr io.Writer, args []string) i
 	fs.BoolVar(&showVersion, "v", false, "Show version information")
 
 	if err := fs.Parse(args); err != nil {
-		fmt.Fprintln(stderr, err)
+		safeFprintln(stderr, err)
 		return 1
 	}
 
 	if showHelp {
-		fmt.Fprintln(stderr, Usage)
+		safeFprintln(stderr, Usage)
 		return 1
 	}
 
 	if showVersion {
-		fmt.Fprintf(stderr, "haproxytimeout %s\n", Version())
+		safeFprintf(stderr, "haproxytimeout %s\n", Version())
 		return 0
 	}
 
@@ -293,7 +329,7 @@ func ConvertDuration(stdin io.Reader, stdout, stderr io.Writer, args []string) i
 
 	input, err := getInputSource(stdin, fs.Args())
 	if err != nil {
-		fmt.Fprintln(stderr, err)
+		safeFprintln(stderr, err)
 		return 1
 	}
 
@@ -302,7 +338,7 @@ func ConvertDuration(stdin io.Reader, stdout, stderr io.Writer, args []string) i
 		if len(fs.Args()) > 0 {
 			printPositionalError(stderr, err, fs.Args()[0])
 		} else {
-			fmt.Fprintln(stderr, err)
+			safeFprintln(stderr, err)
 		}
 		return 1
 	}
