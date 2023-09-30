@@ -8,7 +8,7 @@ buildGoModule rec {
     owner = "frobware";
     repo = pname;
     rev = "v${version}";
-    sha256 = "sha256-cQ4AS8fNGSdeb/tmXfpgbJps61+k2dmhnPltXrTpku0=";
+    sha256 = "sha256-rpwrFD2Ogz6+P5kxBmWwXPzHmZvpXvQvwV2yExCg7wc=";
   };
 
   subPackages = [ "cmd/haproxytimeout" ];
