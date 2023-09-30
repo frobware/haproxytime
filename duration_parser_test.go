@@ -137,7 +137,7 @@ func TestParseDurationOverflowErrors(t *testing.T) {
 		description: "maximum value without overflow (just under the limit)",
 		input:       "2147483647ms",
 		expectErr:   false,
-		duration:    haproxytime.MaxTimeout,
+		duration:    haproxytime.MaxTimeoutInMillis,
 	}, {
 		description: "maximum value without overflow (using different time units)",
 		input:       "2147483s647ms",

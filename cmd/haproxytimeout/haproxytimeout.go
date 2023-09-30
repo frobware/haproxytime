@@ -323,7 +323,7 @@ func ConvertDuration(stdin io.Reader, stdout, stderr io.Writer, args []string) i
 	}
 
 	if printMax {
-		output(stdout, haproxytime.MaxTimeout, printHuman)
+		output(stdout, haproxytime.MaxTimeoutInMillis, printHuman)
 		return 0
 	}
 

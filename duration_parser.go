@@ -48,10 +48,10 @@ const (
 	// but "1d2h" would not.
 	ParseModeSingleUnit
 
-	// MaxTimeout represents the maximum timeout duration,
+	// MaxTimeoutInMillis represents the maximum timeout duration,
 	// equivalent to the maximum signed 32-bit integer value in
 	// milliseconds.
-	MaxTimeout = 2147483647 * time.Millisecond
+	MaxTimeoutInMillis = 2147483647 * time.Millisecond
 )
 
 // ParseMode defines the behavior for interpreting units in a duration
@@ -453,7 +453,7 @@ func ParseDuration(input string, defaultUnit Unit, parseMode ParseMode) (time.Du
 		// max limit. The check ensures that adding
 		// compositeDuration to totalDuration won't exceed
 		// HAProxy's limit.
-		if totalDuration > MaxTimeout-compositeDuration {
+		if totalDuration > MaxTimeoutInMillis-compositeDuration {
 			return 0, newOverflowError(numStartPos)
 		}
 
