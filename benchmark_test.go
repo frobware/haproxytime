@@ -22,15 +22,16 @@ func init() {
 
 // How to interpret the benchmark results for:
 //
-// $ go test -bench=. -benchmem [-count=1] [-benchtime=1s]
+// $ make benchmark
+// go test -bench=. -benchmem -count=1 -benchtime=1s
 // goos: linux
 // goarch: amd64
 // pkg: github.com/frobware/haproxytime
 // cpu: 11th Gen Intel(R) Core(TM) i7-1165G7 @ 2.80GHz
-// BenchmarkParseDurationMultiUnitMode-8   7338422 168.1 ns/op 0 B/op 0 allocs/op
-// BenchmarkParseDurationSingleUnitMode-8 28579370 41.55 ns/op 0 B/op 0 allocs/op
+// BenchmarkParseDurationMultiUnitMode-8	39985408		28.58 ns/op	       0 B/op	       0 allocs/op
+// BenchmarkParseDurationSingleUnitMode-8	87478999		12.92 ns/op	       0 B/op	       0 allocs/op
 // PASS
-// ok github.com/frobware/haproxytime 2.648s
+// ok	github.com/frobware/haproxytime	2.323s
 //
 // Here's a breakdown:
 //
@@ -38,11 +39,11 @@ func init() {
 //     name of the benchmark function that was executed. The `-8`
 //     specifies that the benchmark was run with 8 threads.
 //
-//   - `7338422`: This is the number of iterations that the benchmark
+//   - `39985408`: This is the number of iterations that the benchmark
 //     managed to run during its timed execution.
 //
-//   - `168.1 ns/op`: This tells you that each operation (in this case,
-//     a call to `ParseDuration`) took an average of 168.1 nanoseconds.
+//   - `28.58 ns/op`: This tells you that each operation (in this
+//     case, a call to `ParseDuration`) took an average of 28.58ns.
 //
 //   - `0 B/op`: This indicates that the function did not allocate any
 //     additional bytes of memory per operation. This is often a
@@ -57,9 +58,9 @@ func init() {
 //   - `PASS`: This tells you that the benchmark completed successfully
 //     without any errors.
 //
-//   - `ok github.com/frobware/haproxytime 2.648s`: This indicates that
+//   - `ok github.com/frobware/haproxytime 2.323s`: This indicates that
 //     the entire test, including setup, tear-down, and the running of
-//     the benchmark, completed in 2.648s.
+//     the benchmark, completed in 2.323s.
 
 func BenchmarkParseDurationMultiUnitMode(b *testing.B) {
 	b.ResetTimer()
