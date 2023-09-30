@@ -143,6 +143,11 @@ func TestParseDurationOverflowErrors(t *testing.T) {
 		expectedErrPos int
 		duration       time.Duration
 	}{{
+		description: "2147483648us is within limits",
+		input:       "2147483648us",
+		expectErr:   false,
+		duration:    2147483648 * time.Microsecond,
+	}, {
 		description: "maximum value without overflow (just under the limit)",
 		input:       "2147483647ms",
 		expectErr:   false,
@@ -198,7 +203,7 @@ func TestParseDurationOverflowErrors(t *testing.T) {
 		duration:       0,
 	}, {
 		description:    "way, way over the limit",
-		input:          "9223372036855ms",
+		input:          "9223372036854775807d",
 		duration:       0,
 		expectErr:      true,
 		expectedErrPos: 1,

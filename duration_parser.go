@@ -212,17 +212,17 @@ const (
 //
 //   - A consumeNumberError indicating whether no number was found or
 //     if an overflow occurred.
-func consumeNumber(input string, start int) (int32, int, consumeNumberError) {
-	const maxInt32Div10 = math.MaxInt32 / 10
+func consumeNumber(input string, start int) (int64, int, consumeNumberError) {
+	const maxInt64Div10 = math.MaxInt64 / 10
 
-	var value int32
+	var value int64
 	position := start
 
 	for position < len(input) {
 		c := input[position]
 		if c >= '0' && c <= '9' {
-			digit := int32(c - '0')
-			if value > maxInt32Div10 || (value == maxInt32Div10 && digit > 7) {
+			digit := int64(c - '0')
+			if value > maxInt64Div10 || (value == maxInt64Div10 && digit > 7) {
 				return 0, position, overflow
 			}
 			value = value*10 + digit
@@ -437,9 +437,26 @@ func ParseDuration(input string, defaultUnit Unit, parseMode ParseMode) (time.Du
 		prevUnit = unit
 
 		compositeDuration := time.Duration(value) * unitProperties[unit].duration
+
+		// Check for negative duration, which can occur if an
+		// overflow happens during the multiplication. Also
+		// check against the maximum int64 value to prevent
+		// overflow when we add to total_duration.
+		if compositeDuration < 0 || totalDuration > (math.MaxInt64-compositeDuration) {
+			return 0, newOverflowError(numStartPos)
+		}
+
+		// Check against MaxTimeout, a custom-defined constant
+		// that represents the max 32-bit integer value in
+		// milliseconds. This is a HAProxy limit on acceptable
+		// timeout durations, separate from the previous int64
+		// max limit. The check ensures that adding
+		// compositeDuration to totalDuration won't exceed
+		// HAProxy's limit.
 		if totalDuration > MaxTimeout-compositeDuration {
 			return 0, newOverflowError(numStartPos)
 		}
+
 		totalDuration += compositeDuration
 
 		if unitEndPos == 0 {
