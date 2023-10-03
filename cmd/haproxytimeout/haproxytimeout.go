@@ -12,6 +12,11 @@ import (
 	"github.com/frobware/haproxytime"
 )
 
+// maxTimeout represents the maximum HAProxy timeout duration,
+// equivalent to the maximum signed 32-bit integer value in
+// milliseconds.
+const maxTimeout = 2147483647 * time.Millisecond
+
 // These variable are populated at build time using linker flags, and
 // the overall build version is retrieved via the Version function.
 var (
@@ -221,12 +226,12 @@ func output(w io.Writer, duration time.Duration, printHuman bool) {
 //
 // Example:
 //
-// Given an OverflowError with Position=18 and
-// arg="24d20h31m23s647ms1000us", it would print:
+// Given an OverflowError with Position=16 and
+// arg="9223372036854ms10000us", it would print:
 //
-//	  overflow error at position 18: value exceeds max duration
-//	  24d20h31m23s647ms1000us
-//			   ^
+//	  overflow error at position 16
+//	  9223372036854ms10000us
+//			 ^
 func printPositionalError(w io.Writer, err error, arg string) {
 	var syntaxErr *haproxytime.SyntaxError
 	var overflowErr *haproxytime.OverflowError
@@ -236,6 +241,8 @@ func printPositionalError(w io.Writer, err error, arg string) {
 		printErrorWithPosition(w, arg, err, syntaxErr.Position())
 	case errors.As(err, &overflowErr):
 		printErrorWithPosition(w, arg, err, overflowErr.Position())
+	default:
+		panic(err)
 	}
 }
 
@@ -271,10 +278,10 @@ func getInputSource(rdr io.Reader, remainingArgs []string) (string, error) {
 	return readAll(rdr)
 }
 
-// ConvertDuration is the primary logic function for the
-// haproxytimeout tool. It parses command-line flags, reads input for
-// a duration string (either from arguments or stdin), converts it
-// into a Go time.Duration object, and then outputs the result.
+// ConvertDuration is the primary function for the haproxytimeout
+// tool. It parses command-line flags, reads input for a duration
+// string (either from arguments or stdin), converts it into a Go
+// time.Duration object, and then outputs the result.
 //
 // Parameters:
 //   - stdin: the io.Reader from which input will be read.
@@ -323,7 +330,7 @@ func ConvertDuration(stdin io.Reader, stdout, stderr io.Writer, args []string) i
 	}
 
 	if printMax {
-		output(stdout, haproxytime.MaxTimeoutInMillis, printHuman)
+		output(stdout, maxTimeout, printHuman)
 		return 0
 	}
 
@@ -340,6 +347,11 @@ func ConvertDuration(stdin io.Reader, stdout, stderr io.Writer, args []string) i
 		} else {
 			safeFprintln(stderr, err)
 		}
+		return 1
+	}
+
+	if duration > maxTimeout {
+		safeFprintf(stderr, "value exceeds HAProxy's maximum duration\n")
 		return 1
 	}
 

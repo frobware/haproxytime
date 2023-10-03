@@ -47,11 +47,6 @@ const (
 	// will result in an error. For instance, "1d" would be valid,
 	// but "1d2h" would not.
 	ParseModeSingleUnit
-
-	// MaxTimeoutInMillis represents the maximum timeout duration,
-	// equivalent to the maximum signed 32-bit integer value in
-	// milliseconds.
-	MaxTimeoutInMillis = 2147483647 * time.Millisecond
 )
 
 // ParseMode defines the behavior for interpreting units in a duration
@@ -176,7 +171,7 @@ func consumeUnit(input string, start int) (Unit, int, bool) {
 	case 'd':
 		return UnitDay, start + 1, true
 	default:
-		// Must return a Unit so we return UnitDay, but false
+		// Must return a Unit, so we return UnitDay, but false
 		// takes precedence (i.e., no known unit was matched).
 		return UnitDay, start, false
 	}
@@ -315,7 +310,7 @@ func (e *OverflowError) Position() int {
 // underlying error, if present. The position is reported as
 // 1-indexed.
 func (e *OverflowError) Error() string {
-	return fmt.Sprintf("overflow error at position %v: value exceeds max duration", e.position+1)
+	return fmt.Sprintf("overflow error at position %v", e.position+1)
 }
 
 // newOverflowError creates a new OverflowError instance. position
@@ -399,14 +394,15 @@ func newSyntaxErrorUnexpectedCharactersInSingleUnitMode(position int) *SyntaxErr
 //     unrecognised units, improperly formatted values, or units that
 //     are not in descending order from day to microsecond.
 //
-//   - OverflowError: If the total duration exceeds HAProxy's maximum
-//     limit or any individual value in the input leads to an overflow
-//     in the total duration.
+//   - OverflowError: If the total duration exceeds the maximum
+//     limit that can be represented as a time.Duration, or if any
+//     individual value in the input leads to an overflow in the
+//     total duration.
 func ParseDuration(input string, defaultUnit Unit, parseMode ParseMode) (time.Duration, error) {
 	position := 0 // in input
 
 	var totalDuration time.Duration
-	var prevUnit Unit = UnitDay
+	var prevUnit = UnitDay
 
 	for position < len(input) {
 		numStartPos := position
@@ -419,7 +415,7 @@ func ParseDuration(input string, defaultUnit Unit, parseMode ParseMode) (time.Du
 
 		var unit Unit
 		var unitEndPos int
-		var unitStartPos int = numEndPos
+		var unitStartPos = numEndPos
 
 		if unitStartPos < len(input) {
 			var validUnit bool
@@ -437,23 +433,7 @@ func ParseDuration(input string, defaultUnit Unit, parseMode ParseMode) (time.Du
 		prevUnit = unit
 
 		compositeDuration := time.Duration(value) * unitProperties[unit].duration
-
-		// Check for negative duration, which can occur if an
-		// overflow happens during the multiplication. Also
-		// check against the maximum int64 value to prevent
-		// overflow when we add to total_duration.
 		if compositeDuration < 0 || totalDuration > (math.MaxInt64-compositeDuration) {
-			return 0, newOverflowError(numStartPos)
-		}
-
-		// Check against MaxTimeout, a custom-defined constant
-		// that represents the max 32-bit integer value in
-		// milliseconds. This is a HAProxy limit on acceptable
-		// timeout durations, separate from the previous int64
-		// max limit. The check ensures that adding
-		// compositeDuration to totalDuration won't exceed
-		// HAProxy's limit.
-		if totalDuration > MaxTimeoutInMillis-compositeDuration {
 			return 0, newOverflowError(numStartPos)
 		}
 
