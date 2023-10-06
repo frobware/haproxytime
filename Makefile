@@ -9,7 +9,9 @@ build: test lint
 	go build -ldflags "$(LDFLAGS)" -o ./haproxytimeout ./cmd/haproxytimeout
 
 test:
-	go test ./...
+	@t="/tmp/go-test-coverage.$$.tmp" && \
+	    go test -coverprofile=$$t ./... && \
+	    rm -f "$$t"
 
 lint:
 	golangci-lint run ./...
