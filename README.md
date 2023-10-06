@@ -14,7 +14,6 @@ Key Features:
 - Capable of parsing composite durations such as
   "24d20h31m23s647ms".
 - Ensures parsed durations are non-negative.
-- Respects HAProxy's maximum duration limit of 2147483647ms.
 
 The command line utility `haproxytimeout` is an example of using the
 package but also serves to convert human-readable duration values to
