@@ -19,10 +19,10 @@ The command line utility `haproxytimeout` is an example of using the
 package but also serves to convert human-readable duration values to
 microseconds, suitable for a HAProxy configuration file.
 
-## Build
+## Install
 
 ```sh
-$ make
+$ go install github.com/frobware/haproxytime/cmd/haproxytimeout@latest                                                                    │
 ```
 
 ## Usage
@@ -60,4 +60,10 @@ Examples:
   haproxytimeout -h 4500000   -> Convert 4500000ms to a human-readable format.
   echo 150s | haproxytimeout  -> Convert 150 seconds to milliseconds.
 
+```
+
+## Dev Build
+
+```sh
+$ make
 ```
