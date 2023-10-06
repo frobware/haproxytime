@@ -27,14 +27,14 @@ import (
 
 // These constants represent different units of time used in the
 // duration parsing process. They are ordered in increasing order of
-// magnitude, from UnitMicrosecond to UnitDay.
+// magnitude, from Microsecond to Day.
 const (
-	UnitMicrosecond Unit = iota
-	UnitMillisecond
-	UnitSecond
-	UnitMinute
-	UnitHour
-	UnitDay
+	Microsecond Unit = iota
+	Millisecond
+	Second
+	Minute
+	Hour
+	Day
 )
 
 const (
@@ -124,12 +124,12 @@ type unitDuration struct {
 // should match the order of values in the Unit enumeration for
 // consistency.
 var unitProperties = [6]unitDuration{
-	{UnitMicrosecond, time.Microsecond},
-	{UnitMillisecond, time.Millisecond},
-	{UnitSecond, time.Second},
-	{UnitMinute, time.Minute},
-	{UnitHour, time.Hour},
-	{UnitDay, 24 * time.Hour},
+	{Microsecond, time.Microsecond},
+	{Millisecond, time.Millisecond},
+	{Second, time.Second},
+	{Minute, time.Minute},
+	{Hour, time.Hour},
+	{Day, 24 * time.Hour},
 }
 
 // consumeUnit scans the input string starting from the given position
@@ -155,25 +155,25 @@ func consumeUnit(input string, start int) (Unit, int, bool) {
 	if len(input) > start+1 && input[start+1] == 's' {
 		switch input[start] {
 		case 'm':
-			return UnitMillisecond, start + 2, true
+			return Millisecond, start + 2, true
 		case 'u':
-			return UnitMicrosecond, start + 2, true
+			return Microsecond, start + 2, true
 		}
 	}
 
 	switch input[start] {
 	case 'h':
-		return UnitHour, start + 1, true
+		return Hour, start + 1, true
 	case 'm':
-		return UnitMinute, start + 1, true
+		return Minute, start + 1, true
 	case 's':
-		return UnitSecond, start + 1, true
+		return Second, start + 1, true
 	case 'd':
-		return UnitDay, start + 1, true
+		return Day, start + 1, true
 	default:
 		// Must return a Unit, so we return UnitDay, but false
 		// takes precedence (i.e., no known unit was matched).
-		return UnitDay, start, false
+		return Day, start, false
 	}
 }
 
@@ -402,7 +402,7 @@ func ParseDuration(input string, defaultUnit Unit, parseMode ParseMode) (time.Du
 	position := 0 // in input
 
 	var totalDuration time.Duration
-	var prevUnit = UnitDay
+	var prevUnit = Day
 
 	for position < len(input) {
 		numStartPos := position

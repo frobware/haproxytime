@@ -66,7 +66,7 @@ func BenchmarkParseDurationMultiUnitMode(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, err := haproxytime.ParseDuration("24d20h31m23s647ms", haproxytime.UnitMillisecond, haproxytime.ParseModeMultiUnit)
+		_, err := haproxytime.ParseDuration("24d20h31m23s647ms", haproxytime.Millisecond, haproxytime.ParseModeMultiUnit)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -77,7 +77,7 @@ func BenchmarkParseDurationSingleUnitMode(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, err := haproxytime.ParseDuration("2147483647ms", haproxytime.UnitMillisecond, haproxytime.ParseModeSingleUnit)
+		_, err := haproxytime.ParseDuration("2147483647ms", haproxytime.Millisecond, haproxytime.ParseModeSingleUnit)
 		if err != nil {
 			b.Fatal(err)
 		}

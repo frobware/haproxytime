@@ -46,7 +46,7 @@ func TestSyntaxError_Error(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.input, func(t *testing.T) {
-			_, err := haproxytime.ParseDuration(tc.input, haproxytime.UnitMillisecond, tc.parseMode)
+			_, err := haproxytime.ParseDuration(tc.input, haproxytime.Millisecond, tc.parseMode)
 
 			if !errors.Is(err, &haproxytime.SyntaxError{}) {
 				t.Errorf("Expected a SyntaxError, but got %T", err)
@@ -87,7 +87,7 @@ func TestOverflowError_Error(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run("", func(t *testing.T) {
-			_, err := haproxytime.ParseDuration(tc.input, haproxytime.UnitMicrosecond, haproxytime.ParseModeMultiUnit)
+			_, err := haproxytime.ParseDuration(tc.input, haproxytime.Microsecond, haproxytime.ParseModeMultiUnit)
 			if !errors.Is(err, &haproxytime.OverflowError{}) {
 				t.Errorf("expected OverflowError, got %T", err)
 				return
@@ -278,7 +278,7 @@ func TestParseDurationOverflow(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.input, func(t *testing.T) {
-			duration, err := haproxytime.ParseDuration(tc.input, haproxytime.UnitMicrosecond, haproxytime.ParseModeMultiUnit)
+			duration, err := haproxytime.ParseDuration(tc.input, haproxytime.Microsecond, haproxytime.ParseModeMultiUnit)
 
 			if tc.expectErr {
 				if !errors.Is(err, &haproxytime.OverflowError{}) {
@@ -513,7 +513,7 @@ func TestParseDurationSyntaxErrors(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
-			duration, err := haproxytime.ParseDuration(tc.input, haproxytime.UnitMillisecond, haproxytime.ParseModeMultiUnit)
+			duration, err := haproxytime.ParseDuration(tc.input, haproxytime.Millisecond, haproxytime.ParseModeMultiUnit)
 
 			if tc.expectErr {
 				if !errors.Is(err, &haproxytime.SyntaxError{}) {

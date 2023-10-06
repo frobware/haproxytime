@@ -340,7 +340,7 @@ func ConvertDuration(stdin io.Reader, stdout, stderr io.Writer, args []string) i
 		return 1
 	}
 
-	duration, err := haproxytime.ParseDuration(input, haproxytime.UnitMillisecond, haproxytime.ParseModeMultiUnit)
+	duration, err := haproxytime.ParseDuration(input, haproxytime.Millisecond, haproxytime.ParseModeMultiUnit)
 	if err != nil {
 		if len(fs.Args()) > 0 {
 			printPositionalError(stderr, err, fs.Args()[0])
