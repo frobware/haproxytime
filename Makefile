@@ -28,4 +28,7 @@ benchmark-profile:
 clean:
 	$(RM) ./haproxytimeout ./haproxytimeout.test
 
-.PHONY: build test clean benchmark lint
+nix-build:
+	nix build .#haproxytimeout
+
+.PHONY: build test clean benchmark lint nix-build
