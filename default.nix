@@ -1,22 +1,17 @@
-{ buildGoModule, fetchFromGitHub, lib }:
+{ buildGoModule, lib }:
 
 buildGoModule rec {
   pname = "haproxytime";
-  version = "0.3.0";
+  version = "0.3.1";
 
-  src = fetchFromGitHub {
-    owner = "frobware";
-    repo = pname;
-    rev = "v${version}";
-    sha256 = "sha256-rpwrFD2Ogz6+P5kxBmWwXPzHmZvpXvQvwV2yExCg7wc=";
-  };
+  src = ./.;
 
   subPackages = [ "cmd/haproxytimeout" ];
 
   vendorSha256 = null;
 
   ldflags = [
-    "-X 'main.buildVersion=${src.rev}'"
+    "-X 'main.buildVersion=v${version}'"
     "-s"
     "-w"
   ];
