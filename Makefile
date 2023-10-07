@@ -1,7 +1,6 @@
 DATE		:= $(shell date --iso-8601=seconds)
 GOVERSION	:= $(shell go version)
-COMMIT		:= $(shell git describe --tags --abbrev=8 --dirty --always --long)
-
+COMMIT		:= $(shell git describe --tags --match 'v*' --abbrev=0 | cut -c 2-)
 PREFIX		:= main
 LDFLAGS		:= -X '$(PREFIX).buildVersion=$(COMMIT) ($(DATE)) $(GOVERSION)'
 
@@ -31,4 +30,7 @@ clean:
 nix-build:
 	nix build .#haproxytimeout
 
-.PHONY: build test clean benchmark lint nix-build
+new-release:
+	echo "{ version = \"$(COMMIT)\"; }" > version.nix
+
+.PHONY: build test clean benchmark lint nix-build version.nix
