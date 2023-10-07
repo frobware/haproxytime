@@ -22,7 +22,7 @@ microseconds, suitable for a HAProxy configuration file.
 ## Install
 
 ```sh
-$ go install github.com/frobware/haproxytime/cmd/haproxytimeout@latest                                                                    │
+$ go install github.com/frobware/haproxytime/cmd/haproxytimeout@latest
 ```
 
 ## Usage

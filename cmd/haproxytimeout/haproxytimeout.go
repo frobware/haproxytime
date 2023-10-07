@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/frobware/haproxytime"
+	"github.com/frobware/haproxytime/build"
 )
 
 // maxTimeout represents the maximum HAProxy timeout duration,
@@ -17,18 +18,11 @@ import (
 // milliseconds.
 const maxTimeout = 2147483647 * time.Millisecond
 
-// These variable are populated at build time using linker flags, and
-// the overall build version is retrieved via the Version function.
-var (
-	buildVersion string
-)
-
 // Version is a function variable that returns the current build
-// version. By default, it returns the value of the unexported
-// 'version' variable, which is set during build time. This variable
-// is designed to be overridden for testing purposes.
+// version. This variable is designed to be overridden for testing
+// purposes.
 var Version = func() string {
-	return buildVersion
+	return fmt.Sprintf("%s %s %s", build.Version, build.Date, build.GoVersion)
 }
 
 var Usage = `
