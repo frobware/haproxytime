@@ -1,16 +1,15 @@
-DATE		:= $(shell date --iso-8601=seconds)
-GOVERSION	:= $(shell go version)
-COMMIT		:= $(shell git describe --tags --match 'v*' --abbrev=0 | cut -c 2-)
-PREFIX		:= main
-LDFLAGS		:= -X '$(PREFIX).buildVersion=$(COMMIT) ($(DATE)) $(GOVERSION)'
+.PHONY: build test test-html lint benchmark benchmark-profile clean nix-build
 
 build: test lint
-	go build -ldflags "$(LDFLAGS)" -o ./haproxytimeout ./cmd/haproxytimeout
+	go build -o haproxytimeout ./cmd/haproxytimeout
 
 test:
-	@t="/tmp/go-test-coverage.$$.tmp" && \
-	    go test -coverprofile=$$t ./... && \
-	    rm -f "$$t"
+	go test -cover ./...
+
+test-html:
+	go test -coverprofile=cover.out ./...
+	go tool cover -html=cover.out
+	$(RM) -f cover.out
 
 lint:
 	golangci-lint run ./...
@@ -20,17 +19,10 @@ benchmark:
 
 benchmark-profile:
 	BENCHMARK_PROFILE_PORT=6060 go test -bench=. -benchmem -count=1 -benchtime=1s -cpuprofile=cpu.pprof
-	go tool pprof cpu.pprof <<< "list consumeNumber"
-	go tool pprof cpu.pprof <<< "list consumeUnit"
-	go tool pprof cpu.pprof <<< "list ParseDuration"
+	go tool pprof cpu.pprof <<< "list github.com/frobware/haproxytime"
 
 clean:
-	$(RM) ./haproxytimeout ./haproxytimeout.test
+	$(RM) haproxytimeout haproxytimeout.test result
 
 nix-build:
-	nix build .#haproxytimeout
-
-new-release:
-	echo "{ version = \"$(COMMIT)\"; }" > version.nix
-
-.PHONY: build test clean benchmark lint nix-build version.nix
+	nix build .#haproxytimeout && ./result/bin/haproxytimeout -v

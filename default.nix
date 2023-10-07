@@ -2,7 +2,7 @@
 
 let
   versionInfo = import ./version.nix;
-in buildGoModule rec {
+in buildGoModule {
   pname = "haproxytime";
   version = versionInfo.version;
   src = ./.;
@@ -10,12 +10,6 @@ in buildGoModule rec {
   subPackages = [ "cmd/haproxytimeout" ];
 
   vendorSha256 = null;
-
-  ldflags = [
-    "-X 'main.buildVersion=v${version}'"
-    "-s"
-    "-w"
-  ];
 
   meta = with lib; {
     description = "Parse time durations, with support for days";

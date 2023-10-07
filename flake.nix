@@ -35,6 +35,7 @@
           pkgs.git
           pkgs.go
           pkgs.golangci-lint
+          pkgs.jq
         ];
       };
     });
