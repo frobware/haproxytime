@@ -1,2 +1,2 @@
 # Automatically generated. DO NOT EDIT.
-{ version = "0.3.4"; date = "2023-10-10"; goversion = "go version go1.20.8 linux/amd64"; }
+{ version = "0.3.5"; date = "2023-10-10"; goversion = "go version go1.20.8 linux/amd64"; }
