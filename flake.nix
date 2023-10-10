@@ -14,30 +14,31 @@
       "x86_64-linux"
     ];
 
-    forEachSupportedSystem = f:
-    nixpkgs.lib.genAttrs supportedSystems
-    (system: f {
-      pkgs = self.inputs.nixpkgs.legacyPackages.${system};
-    });
-
-    makePackageForSystem = system: let
-      pkgs = nixpkgs.legacyPackages.${system};
-    in {
-      haproxytimeout = pkgs.callPackage ./default.nix { };
+    makePackageForSystem = system: {
+      haproxytimeout = nixpkgs.legacyPackages.${system}.callPackage ./package.nix { };
     };
 
-  in {
-    packages = nixpkgs.lib.genAttrs supportedSystems makePackageForSystem;
-
-    devShells = forEachSupportedSystem ({ pkgs }: {
-      default = pkgs.mkShell {
-        packages = [
-          pkgs.git
-          pkgs.go
-          pkgs.golangci-lint
-          pkgs.jq
+    makeDevShellForSystem = system: {
+      default = nixpkgs.legacyPackages.${system}.mkShell {
+        packages = with nixpkgs.legacyPackages.${system}; [
+          git
+          go
+          golangci-lint
+          jq
         ];
       };
+    };
+
+    forEachSupportedSystem = f: nixpkgs.lib.genAttrs supportedSystems (system: f {
+      pkgs = self.inputs.nixpkgs.legacyPackages.${system};
     });
+  in {
+    devShells = nixpkgs.lib.genAttrs supportedSystems makeDevShellForSystem;
+
+    overlays = forEachSupportedSystem ({ pkgs }: (final: prev: {
+      haproxytimeout = self.packages.${pkgs.system}.haproxytimeout;
+    }));
+
+    packages = nixpkgs.lib.genAttrs supportedSystems makePackageForSystem;
   };
 }
