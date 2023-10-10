@@ -60,5 +60,4 @@ EOF
 if [ $commit_flag -eq 1 ]; then
     git add build/build.go version.nix
     git commit -m "Update build.go and version.nix for version ${version}"
-    git tag "v${version}"
 fi
