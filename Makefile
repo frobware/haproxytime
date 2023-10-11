@@ -1,7 +1,17 @@
 .PHONY: build test test-html lint benchmark benchmark-profile clean nix-build
 
+GOVERSION := $(shell go version)
+COMMIT_HASH := $(shell git rev-parse HEAD)
+VERSION := $(shell git describe --tags --abbrev=8 --dirty --always --long | sed 's/-0-g/-g/' | cut -c 2-)
+DATE := $(shell git log -1 --format=%cd --date=format:'%Y-%m-%d' $(COMMIT_HASH))
+PREFIX := main
+LDFLAGS := -X '$(PREFIX).buildVersion=$(VERSION) $(DATE) $(GOVERSION)'
+
 build: test lint
-	go build -o haproxytimeout ./cmd/haproxytimeout
+	go build -ldflags "$(LDFLAGS)" -o haproxytimeout ./cmd/haproxytimeout
+
+install: test lint
+	go install -ldflags "$(LDFLAGS)" ./cmd/haproxytimeout
 
 test:
 	go test -cover ./...

@@ -7,6 +7,12 @@
 
   outputs = { self, nixpkgs }:
   let
+    configRevision = {
+      full = if (self ? rev) then self.rev else if (self ? dirtyRev) then self.dirtyRev else "dirty";
+      short = if (self ? rev) then self.shortRev else if (self ? dirtyRev) then self.dirtyShortRev else "dirty";
+      lastModifiedDate = self.lastModifiedDate;
+    };
+
     supportedSystems = [
       "aarch64-darwin"
       "aarch64-linux"
@@ -15,7 +21,9 @@
     ];
 
     makePackageForSystem = system: {
-      haproxytimeout = nixpkgs.legacyPackages.${system}.callPackage ./package.nix { };
+      haproxytimeout = nixpkgs.legacyPackages.${system}.callPackage ./package.nix {
+        inherit configRevision;
+      };
     };
 
     makeDevShellForSystem = system: {
