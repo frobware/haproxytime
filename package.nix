@@ -1,10 +1,7 @@
 { configRevision, buildGoModule, lib }:
 
-let
-  versionInfo = import ./version.nix;
-in buildGoModule {
-  pname = "haproxytime";
-  version = versionInfo.version;
+buildGoModule {
+  name = "haproxytime";
   src = ./.;
 
   subPackages = [ "cmd/haproxytimeout" ];
