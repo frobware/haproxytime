@@ -14,8 +14,6 @@
 //     "24d20h31m23s647ms".
 //
 //   - Ensures parsed durations are non-negative.
-//
-//   - Respects HAProxy's maximum duration limit of 2147483647ms.
 package haproxytime
 
 import (
