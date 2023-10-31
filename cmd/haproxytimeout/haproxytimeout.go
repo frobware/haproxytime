@@ -249,12 +249,14 @@ func printPositionalError(w io.Writer, err error, arg string) {
 	}
 }
 
-// readAll reads all available bytes from the given io.Reader into a
-// string. It also trims any trailing newline characters. If an error
-// occurs during the read operation, it returns an empty string and
-// the error wrapped with additional context.
-func readAll(rdr io.Reader) (string, error) {
-	inputBytes, err := io.ReadAll(rdr)
+// readAll reads all available bytes up to maxBytes from the given
+// io.Reader into a string. It also trims any trailing newline
+// characters. If an error occurs during the read operation, it
+// returns an empty string and the error wrapped with additional
+// context.
+func readAll(rdr io.Reader, maxBytes int64) (string, error) {
+	limitRdr := io.LimitReader(rdr, maxBytes)
+	inputBytes, err := io.ReadAll(limitRdr)
 	if err != nil {
 		return "", fmt.Errorf("error reading: %w", err)
 	}
@@ -274,11 +276,11 @@ func readAll(rdr io.Reader) (string, error) {
 // Returns:
 //   - The input string to be parsed
 //   - An error if reading from stdin fails
-func getInputSource(rdr io.Reader, remainingArgs []string) (string, error) {
+func getInputSource(rdr io.Reader, remainingArgs []string, maxBytes int64) (string, error) {
 	if len(remainingArgs) > 0 {
 		return remainingArgs[0], nil
 	}
-	return readAll(rdr)
+	return readAll(rdr, maxBytes)
 }
 
 // ConvertDuration is the primary function for the haproxytimeout
@@ -337,7 +339,7 @@ func ConvertDuration(stdin io.Reader, stdout, stderr io.Writer, args []string) i
 		return 0
 	}
 
-	input, err := getInputSource(stdin, fs.Args())
+	input, err := getInputSource(stdin, fs.Args(), 256)
 	if err != nil {
 		safeFprintln(stderr, err)
 		return 1
