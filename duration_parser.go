@@ -14,6 +14,11 @@
 //     "24d20h31m23s647ms".
 //
 //   - Ensures parsed durations are non-negative.
+//
+//   - Custom Range Checking: Allows the user to define their own range
+//     constraints on parsed durations through a BoundsChecker callback.
+//     This enables early termination of the parsing process based on
+//     user-defined limits.
 package haproxytime
 
 import (
@@ -66,8 +71,8 @@ type SyntaxError struct {
 	// UnexpectedCharactersInSingleUnitMode.
 	cause SyntaxErrorCause
 
-	// position represents the location in the input string where
-	// the error was detected. The position is 0-indexed.
+	// position represents the 0-based index location in the input
+	// string where the condition for a SyntaxError was triggered.
 	position int
 }
 
@@ -101,8 +106,17 @@ const (
 // OverflowError represents an error that occurs when a parsed value
 // exceeds the allowable range, leading to an overflow condition.
 type OverflowError struct {
-	// position represents the location in the input string where
-	// the error was detected. The position is 0-indexed.
+	// position represents the 0-based index location in the input
+	// string where the condition for a OverflowError was
+	// triggered.
+	position int
+}
+
+// RangeError represents a condition where a parsed value exceeds a
+// user-defined allowable range.
+type RangeError struct {
+	// position represents the 0-based index location in the input
+	// string where the condition for a RangeError was triggered.
 	position int
 }
 
@@ -256,8 +270,9 @@ func (e *SyntaxError) Position() int {
 
 // Error implements the error interface for ParseError. It provides a
 // formatted error message detailing the position and the nature of
-// the parsing error. Note that the position is reported as 1-index
-// based.
+// the parsing error. The position in the error message is converted
+// to 1-based indexing, rather than the original 0-based indexing used
+// in the input string.
 func (e *SyntaxError) Error() string {
 	var msg string
 	switch e.cause {
@@ -279,6 +294,28 @@ func (e *SyntaxError) Error() string {
 // UnexpectedCharactersInSingleUnitMode.
 func (e *SyntaxError) Cause() SyntaxErrorCause {
 	return e.cause
+}
+
+// Is checks whether the provided target error matches the RangeError
+// type. This method facilitates the use of the errors.Is function for
+// matching against RangeError.
+//
+// Example:
+//
+//	if errors.Is(err, &haproxytime.RangeError{}) {
+//	    // handle RangeError
+//	}
+func (e *RangeError) Is(target error) bool {
+	var rangeError *RangeError
+	ok := errors.As(target, &rangeError)
+	return ok
+}
+
+// Position returns the position in the input string where the
+// RangeError occurred. The position is 0-based, meaning that the
+// first character in the input string is at position 0.
+func (e *RangeError) Position() int {
+	return e.position
 }
 
 // Is checks whether the provided target error matches the
@@ -305,18 +342,35 @@ func (e *OverflowError) Position() int {
 
 // Error returns a formatted message indicating the position and value
 // that caused the overflow, and includes additional context from any
-// underlying error, if present. The position is reported as
-// 1-indexed.
+// underlying error, if present. The position in the error message is
+// converted to 1-based indexing, rather than the original 0-based
+// indexing used in the input string. 1-indexed.
 func (e *OverflowError) Error() string {
 	return fmt.Sprintf("overflow error at position %v", e.position+1)
 }
 
+// Error returns a formatted message indicating the position where the
+// allowable range was exceeded. The position in the error message is
+// converted to 1-based indexing, rather than the original 0-based
+// indexing used in the input string.
+func (e *RangeError) Error() string {
+	return fmt.Sprintf("range error at position %d", e.position+1)
+}
+
 // newOverflowError creates a new OverflowError instance. position
-// specifies the 0-indexed position in the input string where the
-// overflow error was detected. number is the numeric value in string
-// form that caused the overflow.
+// specifies the 0-based index in the input string where the overflow
+// occurs.
 func newOverflowError(position int) *OverflowError {
 	return &OverflowError{
+		position: position,
+	}
+}
+
+// newRangeError creates a new RangeError instance. position specifies
+// the 0-based index in the input string where the range error was
+// triggered.
+func newRangeError(position int) *RangeError {
+	return &RangeError{
 		position: position,
 	}
 }
@@ -363,6 +417,34 @@ func newSyntaxErrorUnexpectedCharactersInSingleUnitMode(position int) *SyntaxErr
 	}
 }
 
+// RangeChecker is a function type that serves as a callback during
+// the parsing process in ParseDuration. The callback is invoked every
+// time a new composite duration (unit * value) is calculated.
+//
+// Parameters:
+//
+//   - position: The current position in the input string where the
+//     composite duration was parsed.
+//
+//   - value: The composite duration that was just calculated
+//     (unit * value).
+//
+//   - totalSoFar: The total duration that has been parsed so far.
+//
+// The callback returns a boolean that determines whether parsing
+// should continue (true) or stop immediately (false). If the parsing
+// is halted, a RangeError will be returned from the ParseDuration
+// function.
+type RangeChecker func(position int, value time.Duration, totalSoFar time.Duration) bool
+
+// NoRangeChecking is a sentinel BoundsChecker function that allows
+// the ParseDuration function to proceed without any range checks.
+// This function always returns true, allowing the parsing to
+// continue.
+func NoRangeChecking(position int, value time.Duration, totalSoFar time.Duration) bool {
+	return true
+}
+
 // ParseDuration translates an input string representing a time
 // duration into a time.Duration type. The string may include values
 // with the following units: "d" (days), "h" (hours), "m" (minutes),
@@ -385,7 +467,7 @@ func newSyntaxErrorUnexpectedCharactersInSingleUnitMode(position int) *SyntaxErr
 //
 // Returns a time.Duration representing the parsed duration value from
 // the input string. If the input is invalid or cannot be parsed into
-// a valid time.Duration, the function will return one of the two
+// a valid time.Duration, the function will return one of the
 // following error types:
 //
 //   - SyntaxError: When the input has non-numeric values,
@@ -395,8 +477,14 @@ func newSyntaxErrorUnexpectedCharactersInSingleUnitMode(position int) *SyntaxErr
 //   - OverflowError: If the total duration exceeds the maximum
 //     limit that can be represented as a time.Duration, or if any
 //     individual value in the input leads to an overflow in the
-//     total duration.
-func ParseDuration(input string, defaultUnit Unit, parseMode ParseMode) (time.Duration, error) {
+//     total duration. Takes precedence over RangeError.
+//
+//   - RangeError: If the parsing is halted by a BoundsChecker callback
+//     returning false.
+//
+// Note: If both OverflowError and RangeError conditions are met,
+// OverflowError will take precedence.
+func ParseDuration(input string, defaultUnit Unit, parseMode ParseMode, inRangeChecker RangeChecker) (time.Duration, error) {
 	position := 0 // in input
 
 	var totalDuration time.Duration
@@ -433,6 +521,10 @@ func ParseDuration(input string, defaultUnit Unit, parseMode ParseMode) (time.Du
 		compositeDuration := time.Duration(value) * unitProperties[unit].duration
 		if compositeDuration < 0 || totalDuration > (math.MaxInt64-compositeDuration) {
 			return 0, newOverflowError(numStartPos)
+		}
+
+		if inRangeChecker != nil && !inRangeChecker(position, compositeDuration, totalDuration) {
+			return 0, newRangeError(numStartPos)
 		}
 
 		totalDuration += compositeDuration

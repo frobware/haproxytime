@@ -133,13 +133,13 @@ func TestConvertDuration(t *testing.T) {
 		args:           []string{"24d20h31m23s647ms1000us"},
 		expectedExit:   1,
 		expectedStdout: "",
-		expectedStderr: "value exceeds HAProxy's maximum duration",
+		expectedStderr: "range error at position 18\n24d20h31m23s647ms1000us\n                 ^",
 	}, {
 		description:    "value exceeds HAProxy's maximum description from stdin",
 		stdin:          strings.NewReader("24d20h31m23s647ms1000us\n"),
 		expectedExit:   1,
 		expectedStdout: "",
-		expectedStderr: "value exceeds HAProxy's maximum duration",
+		expectedStderr: "range error at position 18",
 	}, {
 		description:    "simulated reading failure",
 		stdin:          &errorReader{},
@@ -148,16 +148,16 @@ func TestConvertDuration(t *testing.T) {
 		expectedStderr: "error reading: simulated read error",
 	}, {
 		description:    "overflow error from args",
-		args:           []string{"9223372036854ms10000us"},
+		args:           []string{"9223372036855ms"},
 		expectedExit:   1,
 		expectedStdout: "",
-		expectedStderr: "overflow error at position 16\n9223372036854ms10000us\n               ^",
+		expectedStderr: "overflow error at position 1\n9223372036855ms\n^",
 	}, {
 		description:    "overflow error from stdin",
-		stdin:          strings.NewReader("106751d23h47m16s854ms984us"),
+		stdin:          strings.NewReader("9223372036855ms"),
 		expectedExit:   1,
 		expectedStdout: "",
-		expectedStderr: "overflow error at position 22",
+		expectedStderr: "overflow error at position 1",
 	}, {
 		description:    "empty string from stdin",
 		stdin:          &emptyStringReader{},

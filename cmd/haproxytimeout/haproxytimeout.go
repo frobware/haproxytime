@@ -219,31 +219,26 @@ func output(w io.Writer, duration time.Duration, printHuman bool) {
 //
 // Parameters:
 //   - w: the io.Writer to output the error message, usually os.Stderr
-//   - err: the error that occurred, expected to be of type *haproxytime.SyntaxError or *haproxytime.OverflowError
+//   - err: the error that occurred, expected to be of type *haproxytime.{OverflowError,RangeError,SyntaxError}
 //   - arg: the input argument string where the error occurred
 //
 // The function first tries to cast the error to either
-// haproxytime.SyntaxError or haproxytime.OverflowError. If
-// successful, it prints the error message along with the position at
-// which the error occurred, using printErrorWithPosition function.
-//
-// Example:
-//
-// Given an OverflowError with Position=16 and
-// arg="9223372036854ms10000us", it would print:
-//
-//	  overflow error at position 16
-//	  9223372036854ms10000us
-//			 ^
+// haproxytime.SyntaxError or haproxytime.OverflowError or
+// haproxytime.RangeError. If successful, it prints the error message
+// along with the position at which the error occurred, using
+// printErrorWithPosition function.
 func printPositionalError(w io.Writer, err error, arg string) {
-	var syntaxErr *haproxytime.SyntaxError
 	var overflowErr *haproxytime.OverflowError
+	var rangeErr *haproxytime.RangeError
+	var syntaxErr *haproxytime.SyntaxError
 
 	switch {
-	case errors.As(err, &syntaxErr):
-		printErrorWithPosition(w, arg, err, syntaxErr.Position())
 	case errors.As(err, &overflowErr):
 		printErrorWithPosition(w, arg, err, overflowErr.Position())
+	case errors.As(err, &rangeErr):
+		printErrorWithPosition(w, arg, err, rangeErr.Position())
+	case errors.As(err, &syntaxErr):
+		printErrorWithPosition(w, arg, err, syntaxErr.Position())
 	default:
 		panic(err)
 	}
@@ -345,18 +340,16 @@ func ConvertDuration(stdin io.Reader, stdout, stderr io.Writer, args []string) i
 		return 1
 	}
 
-	duration, err := haproxytime.ParseDuration(input, haproxytime.Millisecond, haproxytime.ParseModeMultiUnit)
+	duration, err := haproxytime.ParseDuration(input, haproxytime.Millisecond, haproxytime.ParseModeMultiUnit, func(position int, value time.Duration, totalSoFar time.Duration) bool {
+		return value+totalSoFar <= maxTimeout
+	})
+
 	if err != nil {
 		if len(fs.Args()) > 0 {
 			printPositionalError(stderr, err, fs.Args()[0])
 		} else {
 			safeFprintln(stderr, err)
 		}
-		return 1
-	}
-
-	if duration > maxTimeout {
-		safeFprintf(stderr, "value exceeds HAProxy's maximum duration\n")
 		return 1
 	}
 

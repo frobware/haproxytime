@@ -16,7 +16,7 @@ install: test lint
 test:
 	go test -cover ./...
 
-test-html:
+coverage:
 	go test -coverprofile=cover.out ./...
 	go tool cover -html=cover.out
 	$(RM) -f cover.out

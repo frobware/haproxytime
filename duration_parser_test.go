@@ -46,7 +46,7 @@ func TestSyntaxError_Error(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.input, func(t *testing.T) {
-			_, err := haproxytime.ParseDuration(tc.input, haproxytime.Millisecond, tc.parseMode)
+			_, err := haproxytime.ParseDuration(tc.input, haproxytime.Millisecond, tc.parseMode, haproxytime.NoRangeChecking)
 
 			if !errors.Is(err, &haproxytime.SyntaxError{}) {
 				t.Errorf("Expected a SyntaxError, but got %T", err)
@@ -87,7 +87,7 @@ func TestOverflowError_Error(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run("", func(t *testing.T) {
-			_, err := haproxytime.ParseDuration(tc.input, haproxytime.Microsecond, haproxytime.ParseModeMultiUnit)
+			_, err := haproxytime.ParseDuration(tc.input, haproxytime.Microsecond, haproxytime.ParseModeMultiUnit, haproxytime.NoRangeChecking)
 			if !errors.Is(err, &haproxytime.OverflowError{}) {
 				t.Errorf("expected OverflowError, got %T", err)
 				return
@@ -278,7 +278,7 @@ func TestParseDurationOverflow(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.input, func(t *testing.T) {
-			duration, err := haproxytime.ParseDuration(tc.input, haproxytime.Microsecond, haproxytime.ParseModeMultiUnit)
+			duration, err := haproxytime.ParseDuration(tc.input, haproxytime.Microsecond, haproxytime.ParseModeMultiUnit, haproxytime.NoRangeChecking)
 
 			if tc.expectErr {
 				if !errors.Is(err, &haproxytime.OverflowError{}) {
@@ -292,7 +292,7 @@ func TestParseDurationOverflow(t *testing.T) {
 				}
 			} else {
 				if err != nil {
-					t.Errorf("didn't expect error for input %q but got %v", tc.input, err)
+					t.Errorf("didn't expect an error for input %q but got %v", tc.input, err)
 					return
 				}
 				if duration != tc.expectedDuration {
@@ -513,7 +513,7 @@ func TestParseDurationSyntaxErrors(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
-			duration, err := haproxytime.ParseDuration(tc.input, haproxytime.Millisecond, haproxytime.ParseModeMultiUnit)
+			duration, err := haproxytime.ParseDuration(tc.input, haproxytime.Millisecond, haproxytime.ParseModeMultiUnit, haproxytime.NoRangeChecking)
 
 			if tc.expectErr {
 				if !errors.Is(err, &haproxytime.SyntaxError{}) {
@@ -530,7 +530,77 @@ func TestParseDurationSyntaxErrors(t *testing.T) {
 				}
 			} else {
 				if err != nil {
-					t.Errorf("didn't expect error for input %q but got %v", tc.input, err)
+					t.Errorf("didn't expect an error for input %q but got %v", tc.input, err)
+					return
+				}
+				if duration != tc.duration {
+					t.Errorf("expected duration %v, but got %v", tc.duration, duration)
+				}
+			}
+		})
+	}
+}
+
+func TestParseDurationRangeErrors(t *testing.T) {
+	tests := []struct {
+		description      string
+		input            string
+		expectErr        bool
+		expectedPosition int
+		expectedErrMsg   string
+		duration         time.Duration
+		inRangeChecker   haproxytime.RangeChecker
+	}{{
+		description:    "empty string",
+		input:          "",
+		expectErr:      false,
+		expectedErrMsg: "",
+		duration:       0,
+		inRangeChecker: func(position int, value time.Duration, total time.Duration) bool {
+			return false
+		},
+	}, {
+		description:      "0 is out of range",
+		input:            "0",
+		expectErr:        true,
+		expectedPosition: 0,
+		expectedErrMsg:   "range error at position 1",
+		duration:         0,
+		inRangeChecker: func(position int, value time.Duration, total time.Duration) bool {
+			return false
+		},
+	}, {
+		description:      "the final 1000us takes the input out of range",
+		input:            "24d20h31m23s647ms1000us",
+		expectErr:        true,
+		expectedPosition: 17,
+		expectedErrMsg:   "range error at position 18",
+		duration:         0,
+		inRangeChecker: func(position int, value time.Duration, total time.Duration) bool {
+			return total.Milliseconds() < 2147483647
+		},
+	}}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			duration, err := haproxytime.ParseDuration(tc.input, haproxytime.Millisecond, haproxytime.ParseModeMultiUnit, tc.inRangeChecker)
+
+			if tc.expectErr {
+				if !errors.Is(err, &haproxytime.RangeError{}) {
+					t.Errorf("expected a RangeError, but got %T", err)
+					return
+				}
+
+				rangeErr := err.(*haproxytime.RangeError)
+				if rangeErr.Position() != tc.expectedPosition {
+					t.Errorf("expected RangeError at position %v, but got %v", tc.expectedPosition, rangeErr.Position())
+				}
+				if rangeErr.Error() != tc.expectedErrMsg {
+					t.Errorf("expected error message %q, got %q", tc.expectedErrMsg, rangeErr.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("didn't expect an error for input %q but got %v", tc.input, err)
 					return
 				}
 				if duration != tc.duration {
