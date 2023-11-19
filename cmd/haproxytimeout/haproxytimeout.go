@@ -284,7 +284,7 @@ func getInputSource(rdr io.Reader, remainingArgs []string, maxBytes int64) (stri
 	return readAll(rdr, maxBytes)
 }
 
-// ConvertDuration is the primary function for the haproxytimeout
+// convertDuration is the primary function for the haproxytimeout
 // tool. It parses command-line flags, reads input for a duration
 // string (either from arguments or stdin), converts it into a Go
 // time.Duration object, and then outputs the result.
@@ -309,7 +309,7 @@ func getInputSource(rdr io.Reader, remainingArgs []string, maxBytes int64) (stri
 // If an error occurs, the function writes the error message to stderr
 // and returns 1. Otherwise, it writes the converted or maximum
 // duration to stdout and returns 0.
-func ConvertDuration(stdin io.Reader, stdout, stderr io.Writer, args []string) int {
+func convertDuration(stdin io.Reader, stdout, stderr io.Writer, args []string) int {
 	fs := flag.NewFlagSet("haproxytimeout", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 
@@ -364,5 +364,5 @@ func ConvertDuration(stdin io.Reader, stdout, stderr io.Writer, args []string) i
 }
 
 func main() {
-	os.Exit(ConvertDuration(os.Stdin, os.Stdout, os.Stderr, os.Args[1:]))
+	os.Exit(convertDuration(os.Stdin, os.Stdout, os.Stderr, os.Args[1:]))
 }
