@@ -216,35 +216,38 @@ func output(w io.Writer, duration time.Duration, printHuman bool) {
 
 // printPositionalError formats and outputs an error message to the
 // provided io.Writer, along with the position at which the error
-// occurred in the input argument. It supports haproxytime.SyntaxError
-// and haproxytime.OverflowError types, which contain positional
-// information.
+// occurred in the input argument. It supports error types with
+// positional information, such as haproxytime.SyntaxError,
+// haproxytime.OverflowError, and haproxytime.RangeError.
 //
 // Parameters:
-//   - w: the io.Writer to output the error message, usually os.Stderr
-//   - err: the error that occurred, expected to be of type *haproxytime.{OverflowError,RangeError,SyntaxError}
-//   - arg: the input argument string where the error occurred
 //
-// The function first tries to cast the error to either
-// haproxytime.SyntaxError or haproxytime.OverflowError or
-// haproxytime.RangeError. If successful, it prints the error message
-// along with the position at which the error occurred, using
-// printErrorWithPosition function.
-func printPositionalError(w io.Writer, err error, arg string) {
-	var overflowErr *haproxytime.OverflowError
-	var rangeErr *haproxytime.RangeError
-	var syntaxErr *haproxytime.SyntaxError
+//   - w: the io.Writer to output the error message, usually
+//     os.Stderr.
 
-	switch {
-	case errors.As(err, &overflowErr):
-		printErrorWithPosition(w, arg, err, overflowErr.Position())
-	case errors.As(err, &rangeErr):
-		printErrorWithPosition(w, arg, err, rangeErr.Position())
-	case errors.As(err, &syntaxErr):
-		printErrorWithPosition(w, arg, err, syntaxErr.Position())
-	default:
-		panic(err)
+//   - err: the error that occurred, expected to be of a type that
+//     contains positional information, typically
+//     *haproxytime.{OverflowError,RangeError,SyntaxError}.
+//
+//   - arg: the input argument string where the error occurred.
+//
+// The function uses the errors.As method to check if the error
+// implements an interface that provides the Position() method. If
+// such an error type is detected and is not nil, it prints the error
+// message along with the position at which the error occurred, using
+// the printErrorWithPosition function. If no matching error type is
+// found, the function panics.
+func printPositionalError(w io.Writer, err error, arg string) {
+	var posErr interface {
+		Position() int
 	}
+	if errors.As(err, &posErr) && posErr != nil {
+		printErrorWithPosition(w, arg, err, posErr.Position())
+		return
+	}
+	// Panic if the error is not one of SyntaxError,
+	// OverflowError, or RangeError.
+	panic(err)
 }
 
 // readAll reads all available bytes up to maxBytes from the given
