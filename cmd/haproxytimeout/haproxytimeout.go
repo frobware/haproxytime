@@ -21,19 +21,15 @@ import (
 const maxTimeout = 2147483647 * time.Millisecond
 
 // These variable are populated at build time using linker flags, and
-// the overall build version is retrieved via the Version function.
+// the overall build version is retrieved via the version function.
 var (
 	buildVersion string
 )
 
-// Version is a function variable that returns the current build
+// version is a function variable that returns the current build
 // version. By default, it returns the value of the unexported
-// 'version' variable, which is set during build time. This variable
-// is designed to be overridden for testing purposes.
-var Version = func() string {
-	if buildVersion == "" {
-		return "<version-unknown>"
-	}
+// 'build_version' variable, which is set during build time.
+var version = func() string {
 	return buildVersion
 }
 
@@ -331,7 +327,7 @@ func convertDuration(stdin io.Reader, stdout, stderr io.Writer, args []string) i
 	}
 
 	if showVersion {
-		safeFprintf(stderr, "haproxytimeout %s\n", Version())
+		safeFprintf(stderr, "haproxytimeout %s\n", version())
 		return 0
 	}
 
