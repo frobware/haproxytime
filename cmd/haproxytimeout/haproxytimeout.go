@@ -12,12 +12,16 @@ import (
 	"github.com/frobware/haproxytime"
 )
 
-// maxTimeout represents the maximum timeout duration for HAProxy.
-// This value is constrained by HAProxy's limit for timeout
-// configurations, which is the maximum value of a signed 32-bit
-// integer in milliseconds. Setting a timeout beyond this value in
-// HAProxy's configuration will result in an overflow error. This
-// limit applies even on systems with 64-bit architecture.
+// maxTimeout represents the maximum permissible timeout duration for
+// HAProxy. Set at 2,147,483,647 milliseconds (approximately 24.8
+// days), it aligns with the upper limit of HAProxy's timer
+// configuration. This value corresponds to the maximum positive value
+// for a signed 32-bit integer. Specifying a timeout exceeding this
+// threshold (e.g., 2147483648ms) in HAProxy's configuration will
+// result in an overflow error, causing a critical configuration
+// failure, preventing HAProxy from starting. This constraint ensures
+// that timeout values remain within the operational limits of
+// HAProxy, regardless of the underlying system architecture.
 const maxTimeout = 2147483647 * time.Millisecond
 
 // These variable are populated at build time using linker flags, and
