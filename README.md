@@ -21,6 +21,14 @@ microseconds, suitable for a HAProxy configuration file.
 
 ## Install
 
+To install with versioning information
+
+```sh
+$ go install -ldflags "-X 'main.buildVersion=$(git describe --tags --abbrev=8 --dirty --always --long)'" github.com/frobware/haproxytime/cmd/haproxytimeout@latest
+```
+
+To install without versioning information
+
 ```sh
 $ go install github.com/frobware/haproxytime/cmd/haproxytimeout@latest
 ```
