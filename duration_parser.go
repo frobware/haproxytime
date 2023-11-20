@@ -486,20 +486,21 @@ func NoRangeChecking(position int, value time.Duration, totalSoFar time.Duration
 // OverflowError will take precedence.
 func ParseDuration(input string, defaultUnit Unit, parseMode ParseMode, inRangeChecker RangeChecker) (time.Duration, error) {
 	position := 0 // in input
-
 	var totalDuration time.Duration
 	var prevUnit = Day
 
 	for position < len(input) {
 		numStartPos := position
 		value, numEndPos, parseNumErr := consumeNumber(input, numStartPos)
-		if parseNumErr == noNumberFound {
+
+		switch parseNumErr {
+		case noNumberFound:
 			return 0, newSyntaxErrorInvalidNumber(numStartPos)
-		} else if parseNumErr == overflow {
+		case overflow:
 			return 0, newOverflowError(numStartPos)
 		}
 
-		var unit Unit
+		var unit Unit = defaultUnit
 		var unitEndPos int
 		var unitStartPos = numEndPos
 
@@ -509,8 +510,6 @@ func ParseDuration(input string, defaultUnit Unit, parseMode ParseMode, inRangeC
 			if !validUnit {
 				return 0, newSyntaxErrorInvalidUnit(unitStartPos)
 			}
-		} else {
-			unit = defaultUnit
 		}
 
 		if position > 0 && unit >= prevUnit {
@@ -528,12 +527,7 @@ func ParseDuration(input string, defaultUnit Unit, parseMode ParseMode, inRangeC
 		}
 
 		totalDuration += compositeDuration
-
-		if unitEndPos == 0 {
-			position = numEndPos
-		} else {
-			position = unitEndPos
-		}
+		position = max(unitEndPos, numEndPos)
 
 		if parseMode == ParseModeSingleUnit && position < len(input) {
 			return 0, newSyntaxErrorUnexpectedCharactersInSingleUnitMode(position)
@@ -541,4 +535,11 @@ func ParseDuration(input string, defaultUnit Unit, parseMode ParseMode, inRangeC
 	}
 
 	return totalDuration, nil
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
