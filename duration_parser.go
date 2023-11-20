@@ -527,8 +527,16 @@ func ParseDuration(input string, defaultUnit Unit, parseMode ParseMode, inRangeC
 		}
 
 		totalDuration += compositeDuration
+
+		// Update position before error checking to reflect
+		// the extent of parsing.
 		position = max(unitEndPos, numEndPos)
 
+		// In single-unit mode, check for unexpected
+		// characters using the updated position. This helps
+		// accurately pinpoint where in the input string the
+		// unexpected characters start, indicating a syntax
+		// error if additional characters are present.
 		if parseMode == ParseModeSingleUnit && position < len(input) {
 			return 0, newSyntaxErrorUnexpectedCharactersInSingleUnitMode(position)
 		}
