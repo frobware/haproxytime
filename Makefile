@@ -7,13 +7,14 @@ DATE := $(shell git log -1 --format=%cd --date=format:'%Y-%m-%d' $(COMMIT_HASH))
 PREFIX := main
 LDFLAGS := -X '$(PREFIX).buildVersion=$(VERSION) $(DATE) $(GOVERSION)'
 
-build: test lint
+build: test
 	go build -ldflags "$(LDFLAGS)" -o haproxytimeout ./cmd/haproxytimeout
 
-install: test lint
+install: test
 	go install -ldflags "$(LDFLAGS)" ./cmd/haproxytimeout
 
 test:
+	golangci-lint run ./...
 	go test -cover ./...
 
 coverage:
