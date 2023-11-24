@@ -10,6 +10,26 @@ import (
 	cmd "github.com/frobware/haproxytime/cmd/haproxytimeout"
 )
 
+// mockFailWriter is an io.Writer implementation that simulates a write failure.
+// It's used in tests to trigger error handling paths in functions that write to io.Writer.
+type mockFailWriter struct{}
+
+func (m mockFailWriter) Write(p []byte) (n int, err error) {
+	return 0, errors.New("mock write failure")
+}
+
+// MockExitHandler is an implementation of the ExitHandler interface used in tests.
+// It captures the exit code provided to the Exit method instead of terminating the program.
+type MockExitHandler struct {
+	Exited bool // Exited indicates whether Exit was called
+	Code   int  // Code is the exit code passed to Exit
+}
+
+func (e *MockExitHandler) Exit(code int) {
+	e.Exited = true
+	e.Code = code
+}
+
 type errorReader struct{}
 
 func (er *errorReader) Read([]byte) (n int, err error) {
@@ -191,8 +211,15 @@ func TestConvertDuration(t *testing.T) {
 		t.Run(tc.description, func(t *testing.T) {
 			stdout := &bytes.Buffer{}
 			stderr := &bytes.Buffer{}
+			mockExitHandler := &MockExitHandler{}
 
-			exitCode := cmd.ConvertDuration(tc.stdin, stdout, stderr, tc.args)
+			exitCode := cmd.ConvertDuration(tc.stdin, stdout, stderr, tc.args, mockExitHandler)
+
+			// If mockExitHandler.Exited is true, use
+			// mockExitHandler.Code as the exit code.
+			if mockExitHandler.Exited {
+				exitCode = mockExitHandler.Code
+			}
 
 			if exitCode != tc.expectedExit {
 				t.Errorf("Expected exit code %d, but got %d", tc.expectedExit, exitCode)
@@ -208,5 +235,46 @@ func TestConvertDuration(t *testing.T) {
 				t.Errorf("Expected stderr:\n<<<%s>>>\nBut got:\n<<<%s>>>", tc.expectedStderr, actualStderr)
 			}
 		})
+	}
+}
+
+// TestConvertDurationPrintFailure tests the convertDuration function
+// to ensure it correctly handles write failures. The test uses
+// mockFailWriter to simulate write failures and MockExitHandler to
+// capture the exit behavior, verifying that convertDuration exits
+// with the expected code when it encounters write errors.
+func TestConvertDurationPrintFailure(t *testing.T) {
+	mockStdin := strings.NewReader("1d")
+	mockStdout := &mockFailWriter{}
+	mockStderr := &mockFailWriter{}
+	mockExitHandler := &MockExitHandler{}
+
+	cmd.ConvertDuration(mockStdin, mockStdout, mockStderr, []string{}, mockExitHandler)
+
+	// Verify that the mock exit handler was triggered with the
+	// expected exit code.
+	if !mockExitHandler.Exited || mockExitHandler.Code != 1 {
+		t.Errorf("Expected exit with code 1, got exit %v with code %d", mockExitHandler.Exited, mockExitHandler.Code)
+	}
+}
+
+// TestConvertDurationPrintlnFailure tests the convertDuration
+// function to ensure it correctly handles write failures in
+// safeFprintln. The test uses mockFailWriter to simulate write
+// failures and MockExitHandler to capture the exit behavior. It
+// verifies that convertDuration exits with the expected code when
+// safeFprintln encounters write errors.
+func TestConvertDurationPrintlnFailure(t *testing.T) {
+	mockStdin := strings.NewReader("invalid input")
+	mockStdout := &bytes.Buffer{}
+	mockStderr := &mockFailWriter{}
+	mockExitHandler := &MockExitHandler{}
+
+	cmd.ConvertDuration(mockStdin, mockStdout, mockStderr, []string{"-h"}, mockExitHandler)
+
+	// Verify that the mock exit handler was triggered with the
+	// expected exit code.
+	if !mockExitHandler.Exited || mockExitHandler.Code != 1 {
+		t.Errorf("Expected exit with code 1, got exit %v with code %d", mockExitHandler.Exited, mockExitHandler.Code)
 	}
 }

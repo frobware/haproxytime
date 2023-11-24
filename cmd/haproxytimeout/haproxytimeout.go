@@ -70,22 +70,30 @@ Examples:
   haproxytimeout -h 4500000   -> Convert 4500000ms to a human-readable format.
   echo 150s | haproxytimeout  -> Convert 150 seconds to milliseconds.`[1:]
 
+// ExitHandler defines an interface for handling exits.
+type ExitHandler interface {
+	Exit(code int)
+}
+
+// DefaultExitHandler is the production exit handler that calls
+// os.Exit.
+type DefaultExitHandler struct{}
+
+func (e DefaultExitHandler) Exit(code int) {
+	os.Exit(code)
+}
+
 // safeFprintf is a wrapper around fmt.Fprintf that performs a
 // formatted write operation to a given io.Writer. It takes the same
 // arguments as fmt.Fprintf: a format string and a variadic list of
 // arguments. If the write operation fails, the function writes an
-// error message to os.Stderr and exits the program with status code
-// 1 (EXIT_FAILURE).
-//
-// Parameters:
-//   - w: the io.Writer to which the output will be written.
-//   - format: the format string.
-//   - a: a variadic list of arguments to be formatted.
-func safeFprintf(w io.Writer, format string, a ...interface{}) {
+// error message to os.Stderr and exits the program using the provided
+// ExitHandler.
+func safeFprintf(w io.Writer, exitHandler ExitHandler, format string, a ...interface{}) {
 	_, err := fmt.Fprintf(w, format, a...)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Error writing to output: %v\n", err)
-		os.Exit(1)
+		exitHandler.Exit(1)
 	}
 }
 
@@ -93,16 +101,12 @@ func safeFprintf(w io.Writer, format string, a ...interface{}) {
 // operation to a given io.Writer, appending a new line at the end. It
 // takes the same variadic list of arguments as fmt.Fprintln. If the
 // write operation fails, the function writes an error message to
-// os.Stderr and exits the program with status code 1 (EXIT_FAILURE).
-//
-// Parameters:
-//   - w: the io.Writer to which the output will be written.
-//   - a: a variadic list of arguments to be written.
-func safeFprintln(w io.Writer, a ...interface{}) {
+// os.Stderr and exits the program using the provided ExitHandler.
+func safeFprintln(w io.Writer, exitHandler ExitHandler, a ...interface{}) {
 	_, err := fmt.Fprintln(w, a...)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Error writing to output: %v\n", err)
-		os.Exit(1)
+		exitHandler.Exit(1)
 	}
 }
 
@@ -125,11 +129,11 @@ func safeFprintln(w io.Writer, a ...interface{}) {
 //	syntax error at position 18: invalid number
 //	24d20h31m23s647msO000us
 //			 ^
-func printErrorWithPosition(w io.Writer, input string, err error, position int) {
-	safeFprintln(w, err)
-	safeFprintln(w, input)
-	safeFprintf(w, "%"+fmt.Sprint(position)+"s", "")
-	safeFprintln(w, "^")
+func printErrorWithPosition(w io.Writer, exitHandler ExitHandler, input string, err error, position int) {
+	safeFprintln(w, exitHandler, err)
+	safeFprintln(w, exitHandler, input)
+	safeFprintf(w, exitHandler, "%"+fmt.Sprint(position)+"s", "")
+	safeFprintln(w, exitHandler, "^")
 }
 
 // formatDuration takes a time.Duration value and returns a
@@ -206,11 +210,11 @@ func formatDuration(duration time.Duration) string {
 // Examples:
 //   - With printHuman=true and duration=86400000ms, the output will be "1d".
 //   - With printHuman=false and duration=86400000ms, the output will be "86400000ms".
-func output(w io.Writer, duration time.Duration, printHuman bool) {
+func output(w io.Writer, exitHandler ExitHandler, duration time.Duration, printHuman bool) {
 	if printHuman {
-		safeFprintln(w, formatDuration(duration))
+		safeFprintln(w, exitHandler, formatDuration(duration))
 	} else {
-		safeFprintf(w, "%vms\n", duration.Milliseconds())
+		safeFprintf(w, exitHandler, "%vms\n", duration.Milliseconds())
 	}
 }
 
@@ -237,12 +241,12 @@ func output(w io.Writer, duration time.Duration, printHuman bool) {
 // message along with the position at which the error occurred, using
 // the printErrorWithPosition function. If no matching error type is
 // found, the function panics.
-func printPositionalError(w io.Writer, err error, arg string) {
+func printPositionalError(w io.Writer, exitHandler ExitHandler, err error, arg string) {
 	var posErr interface {
 		Position() int
 	}
 	if errors.As(err, &posErr) && posErr != nil {
-		printErrorWithPosition(w, arg, err, posErr.Position())
+		printErrorWithPosition(w, exitHandler, arg, err, posErr.Position())
 		return
 	}
 	// Panic if the error is not one of SyntaxError,
@@ -309,7 +313,7 @@ func getInputSource(rdr io.Reader, remainingArgs []string, maxBytes int64) (stri
 // If an error occurs, the function writes the error message to stderr
 // and returns 1. Otherwise, it writes the converted or maximum
 // duration to stdout and returns 0.
-func convertDuration(stdin io.Reader, stdout, stderr io.Writer, args []string) int {
+func convertDuration(stdin io.Reader, stdout, stderr io.Writer, args []string, exitHandler ExitHandler) int {
 	fs := flag.NewFlagSet("haproxytimeout", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 
@@ -321,28 +325,28 @@ func convertDuration(stdin io.Reader, stdout, stderr io.Writer, args []string) i
 	fs.BoolVar(&showVersion, "v", false, "Show version information")
 
 	if err := fs.Parse(args); err != nil {
-		safeFprintln(stderr, err)
+		safeFprintln(stderr, exitHandler, err)
 		return 1
 	}
 
 	if showHelp {
-		safeFprintln(stderr, Usage)
+		safeFprintln(stderr, exitHandler, Usage)
 		return 1
 	}
 
 	if showVersion {
-		safeFprintf(stderr, "haproxytimeout %s\n", version())
+		safeFprintf(stderr, exitHandler, "haproxytimeout %s\n", version())
 		return 0
 	}
 
 	if printMax {
-		output(stdout, maxTimeout, printHuman)
+		output(stdout, exitHandler, maxTimeout, printHuman)
 		return 0
 	}
 
 	input, err := getInputSource(stdin, fs.Args(), 256)
 	if err != nil {
-		safeFprintln(stderr, err)
+		safeFprintln(stderr, exitHandler, err)
 		return 1
 	}
 
@@ -352,17 +356,17 @@ func convertDuration(stdin io.Reader, stdout, stderr io.Writer, args []string) i
 
 	if err != nil {
 		if len(fs.Args()) > 0 {
-			printPositionalError(stderr, err, fs.Args()[0])
+			printPositionalError(stderr, exitHandler, err, fs.Args()[0])
 		} else {
-			safeFprintln(stderr, err)
+			safeFprintln(stderr, exitHandler, err)
 		}
 		return 1
 	}
 
-	output(stdout, duration, printHuman)
+	output(stdout, exitHandler, duration, printHuman)
 	return 0
 }
 
 func main() {
-	os.Exit(convertDuration(os.Stdin, os.Stdout, os.Stderr, os.Args[1:]))
+	os.Exit(convertDuration(os.Stdin, os.Stdout, os.Stderr, os.Args[1:], DefaultExitHandler{}))
 }
