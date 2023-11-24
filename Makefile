@@ -1,4 +1,4 @@
-.PHONY: build test test-html lint benchmark benchmark-profile clean nix-build
+.PHONY: build install test coverage lint benchmark benchmark-profile clean nix-build
 
 GOVERSION := $(shell go version)
 COMMIT_HASH := $(shell git rev-parse HEAD)
