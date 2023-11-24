@@ -500,7 +500,7 @@ func ParseDuration(input string, defaultUnit Unit, parseMode ParseMode, inRangeC
 			return 0, newOverflowError(numStartPos)
 		}
 
-		var unit Unit = defaultUnit
+		var unit = defaultUnit
 		var unitEndPos int
 		var unitStartPos = numEndPos
 
