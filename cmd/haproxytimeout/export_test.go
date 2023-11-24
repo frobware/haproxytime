@@ -4,5 +4,4 @@ package main
 var (
 	ConvertDuration      = convertDuration
 	PrintPositionalError = printPositionalError
-	Version              = version
 )

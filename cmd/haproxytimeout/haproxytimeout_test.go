@@ -48,28 +48,6 @@ func (er *emptyStringReader) Read([]byte) (n int, err error) {
 	return 0, nil
 }
 
-func TestVersion_Default(t *testing.T) {
-	expected := ""
-	if got := cmd.Version(); got != expected {
-		t.Errorf("Version() = %v, want %v", got, expected)
-	}
-}
-
-func TestVersion_Override(t *testing.T) {
-	// Temporarily override Version
-	originalVersion := cmd.Version
-	defer func() { cmd.Version = originalVersion }()
-
-	cmd.Version = func() string {
-		return "test-version"
-	}
-
-	expected := "test-version"
-	if got := cmd.Version(); got != expected {
-		t.Errorf("Version() = %v, want %v", got, expected)
-	}
-}
-
 func TestConvertDuration(t *testing.T) {
 	tests := []struct {
 		description    string
@@ -83,7 +61,7 @@ func TestConvertDuration(t *testing.T) {
 		args:           []string{"-v"},
 		expectedExit:   0,
 		expectedStdout: "",
-		expectedStderr: `haproxytimeout `,
+		expectedStderr: "haproxytimeout <unknown>",
 	}, {
 		description:    "Test -m flag",
 		args:           []string{"-m"},

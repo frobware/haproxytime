@@ -24,16 +24,16 @@ import (
 // HAProxy, regardless of the underlying system architecture.
 const maxTimeout = 2147483647 * time.Millisecond
 
-// These variable are populated at build time using linker flags, and
-// the overall build version is retrieved via the version function.
 var (
-	buildVersion string
+	// buildVersion is a variable that should be populated at
+	// build time using linker flags to specify the actual build
+	// version. If it is not set, the default value "<unknown>"
+	// will be used.
+	buildVersion string = "<unknown>"
 )
 
-// version is a function variable that returns the current build
-// version. By default, it returns the value of the unexported
-// 'build_version' variable, which is set during build time.
-var version = func() string {
+// version is a function that returns the build version.
+func version() string {
 	return buildVersion
 }
 
