@@ -18,14 +18,14 @@ func (m mockFailWriter) Write(p []byte) (n int, err error) {
 	return 0, errors.New("mock write failure")
 }
 
-// MockExitHandler is an implementation of the ExitHandler interface used in tests.
+// mockExitHandler is an implementation of the ExitHandler interface used in tests.
 // It captures the exit code provided to the Exit method instead of terminating the program.
-type MockExitHandler struct {
+type mockExitHandler struct {
 	Exited bool // Exited indicates whether Exit was called
 	Code   int  // Code is the exit code passed to Exit
 }
 
-func (e *MockExitHandler) Exit(code int) {
+func (e *mockExitHandler) Exit(code int) {
 	e.Exited = true
 	e.Code = code
 }
@@ -211,7 +211,7 @@ func TestConvertDuration(t *testing.T) {
 		t.Run(tc.description, func(t *testing.T) {
 			stdout := &bytes.Buffer{}
 			stderr := &bytes.Buffer{}
-			mockExitHandler := &MockExitHandler{}
+			mockExitHandler := &mockExitHandler{}
 
 			exitCode := cmd.ConvertDuration(tc.stdin, stdout, stderr, tc.args, mockExitHandler)
 
@@ -247,7 +247,7 @@ func TestConvertDurationPrintFailure(t *testing.T) {
 	mockStdin := strings.NewReader("1d")
 	mockStdout := &mockFailWriter{}
 	mockStderr := &mockFailWriter{}
-	mockExitHandler := &MockExitHandler{}
+	mockExitHandler := &mockExitHandler{}
 
 	cmd.ConvertDuration(mockStdin, mockStdout, mockStderr, []string{}, mockExitHandler)
 
@@ -268,11 +268,44 @@ func TestConvertDurationPrintlnFailure(t *testing.T) {
 	mockStdin := strings.NewReader("invalid input")
 	mockStdout := &bytes.Buffer{}
 	mockStderr := &mockFailWriter{}
-	mockExitHandler := &MockExitHandler{}
+	mockExitHandler := &mockExitHandler{}
 
 	cmd.ConvertDuration(mockStdin, mockStdout, mockStderr, []string{"-h"}, mockExitHandler)
 
 	// Verify that the mock exit handler was triggered with the
+	// expected exit code.
+	if !mockExitHandler.Exited || mockExitHandler.Code != 1 {
+		t.Errorf("Expected exit with code 1, got exit %v with code %d", mockExitHandler.Exited, mockExitHandler.Code)
+	}
+}
+
+// TestPrintPositionalErrorWithNonPositionalError directly tests the
+// behavior of PrintPositionalError. Ordinarily, we would prefer to
+// exercise this test through the convertDuration function to mimic
+// real-world usage more closely. However, integrating the required
+// dependency injection to induce a non-positional error through
+// convertDuration proves to be complex. Implementing such dependency
+// injection would require significant modifications to the
+// convertDuration function and its associated code paths, potentially
+// leading to an unnatural design in the overall program. Therefore,
+// this direct approach is used for testing to balance thoroughness in
+// testing with maintaining the simplicity and readability of the
+// application's code.
+func TestPrintPositionalErrorWithNonPositionalError(t *testing.T) {
+	var nonPositionalError = errors.New("non-positional error")
+
+	mockWriter := &bytes.Buffer{}
+	mockExitHandler := &mockExitHandler{}
+
+	cmd.PrintPositionalError(mockWriter, mockExitHandler, nonPositionalError, "inputArg")
+
+	// Check if the generic error message was printed.
+	expectedOutput := "Unexpected error: non-positional error\n"
+	if gotOutput := mockWriter.String(); gotOutput != expectedOutput {
+		t.Errorf("Expected output %q, got %q", expectedOutput, gotOutput)
+	}
+
+	// Verify if the mock exit handler was triggered with the
 	// expected exit code.
 	if !mockExitHandler.Exited || mockExitHandler.Code != 1 {
 		t.Errorf("Expected exit with code 1, got exit %v with code %d", mockExitHandler.Exited, mockExitHandler.Code)

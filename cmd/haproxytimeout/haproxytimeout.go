@@ -225,14 +225,11 @@ func output(w io.Writer, exitHandler ExitHandler, duration time.Duration, printH
 // haproxytime.OverflowError, and haproxytime.RangeError.
 //
 // Parameters:
-//
-//   - w: the io.Writer to output the error message, usually
-//     os.Stderr.
-
+//   - w: the io.Writer to output the error message, usually os.Stderr.
+//   - exitHandler: the ExitHandler to handle exit scenarios.
 //   - err: the error that occurred, expected to be of a type that
 //     contains positional information, typically
 //     *haproxytime.{OverflowError,RangeError,SyntaxError}.
-//
 //   - arg: the input argument string where the error occurred.
 //
 // The function uses the errors.As method to check if the error
@@ -240,7 +237,7 @@ func output(w io.Writer, exitHandler ExitHandler, duration time.Duration, printH
 // such an error type is detected and is not nil, it prints the error
 // message along with the position at which the error occurred, using
 // the printErrorWithPosition function. If no matching error type is
-// found, the function panics.
+// found, the function writes a generic error message and exits.
 func printPositionalError(w io.Writer, exitHandler ExitHandler, err error, arg string) {
 	var posErr interface {
 		Position() int
@@ -249,9 +246,10 @@ func printPositionalError(w io.Writer, exitHandler ExitHandler, err error, arg s
 		printErrorWithPosition(w, exitHandler, arg, err, posErr.Position())
 		return
 	}
-	// Panic if the error is not one of SyntaxError,
-	// OverflowError, or RangeError.
-	panic(err)
+
+	// Handle unexpected error types more gracefully.
+	safeFprintf(w, exitHandler, "Unexpected error: %v\n", err)
+	exitHandler.Exit(1)
 }
 
 // readAll reads all available bytes up to maxBytes from the given

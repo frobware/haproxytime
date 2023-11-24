@@ -2,6 +2,7 @@ package main
 
 // Export for unit testing purposes.
 var (
-	ConvertDuration = convertDuration
-	Version         = version
+	ConvertDuration      = convertDuration
+	PrintPositionalError = printPositionalError
+	Version              = version
 )
