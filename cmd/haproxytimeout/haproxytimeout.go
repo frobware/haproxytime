@@ -84,7 +84,7 @@ Examples:
 func safeFprintf(w io.Writer, format string, a ...interface{}) {
 	_, err := fmt.Fprintf(w, format, a...)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error writing to output: %v\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "Error writing to output: %v\n", err)
 		os.Exit(1)
 	}
 }
@@ -101,7 +101,7 @@ func safeFprintf(w io.Writer, format string, a ...interface{}) {
 func safeFprintln(w io.Writer, a ...interface{}) {
 	_, err := fmt.Fprintln(w, a...)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error writing to output: %v\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "Error writing to output: %v\n", err)
 		os.Exit(1)
 	}
 }
