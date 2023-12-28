@@ -266,20 +266,26 @@ func readAll(rdr io.Reader, maxBytes int64) (string, error) {
 	return strings.TrimRight(string(inputBytes), "\n"), nil
 }
 
-// getInputSource determines the source of the input for parsing the
-// duration. It checks if there are any remaining command-line
-// arguments, and if so, uses the first one as the input string.
-// Otherwise, it reads from the provided Reader.
+// readInput determines the source of the input for parsing the
+// duration and retrieves the input. It first checks if there are any
+// elements in the remainingArgs slice. If so, the first element of
+// remainingArgs is returned. If remainingArgs is empty, the function
+// reads from the provided io.Reader.
 //
 // Parameters:
-//   - rdr: An io.Reader from which to read input if remainingArgs is
-//     empty
-//   - remainingArgs: A slice of remaining command-line arguments
+//
+//	rdr             An io.Reader from which to read if remainingArgs
+//	                is empty.
+//	remainingArgs   A slice of remaining command-line arguments.
+//	maxBytes        The maximum number of bytes to read from the
+//	                reader.
 //
 // Returns:
-//   - The input string to be parsed
-//   - An error if reading from stdin fails
-func getInputSource(rdr io.Reader, remainingArgs []string, maxBytes int64) (string, error) {
+//
+//	value           The first element of remainingArgs or the string
+//	                read from the io.Reader.
+//	err             An error if reading from the io.Reader fails.
+func readInput(rdr io.Reader, remainingArgs []string, maxBytes int64) (string, error) {
 	if len(remainingArgs) > 0 {
 		return remainingArgs[0], nil
 	}
@@ -311,7 +317,7 @@ func getInputSource(rdr io.Reader, remainingArgs []string, maxBytes int64) (stri
 // If an error occurs, the function writes the error message to stderr
 // and returns 1. Otherwise, it writes the converted or maximum
 // duration to stdout and returns 0.
-func convertDuration(stdin io.Reader, stdout, stderr io.Writer, args []string, exitHandler ExitHandler) int {
+func convertDuration(rdr io.Reader, stdout, stderr io.Writer, args []string, exitHandler ExitHandler) int {
 	fs := flag.NewFlagSet("haproxytimeout", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 
@@ -342,7 +348,7 @@ func convertDuration(stdin io.Reader, stdout, stderr io.Writer, args []string, e
 		return 0
 	}
 
-	input, err := getInputSource(stdin, fs.Args(), 256)
+	input, err := readInput(rdr, fs.Args(), 256)
 	if err != nil {
 		safeFprintln(stderr, exitHandler, err)
 		return 1
