@@ -353,11 +353,16 @@ func convertDuration(stdin io.Reader, stdout, stderr io.Writer, args []string, e
 	})
 
 	if err != nil {
+		// If there are command-line arguments, print
+		// positional error.
 		if len(fs.Args()) > 0 {
 			printPositionalError(stderr, exitHandler, err, fs.Args()[0])
-		} else {
-			safeFprintln(stderr, exitHandler, err)
+			return 1
 		}
+
+		// If there are no command-line arguments, simply
+		// print the error.
+		safeFprintln(stderr, exitHandler, err)
 		return 1
 	}
 
