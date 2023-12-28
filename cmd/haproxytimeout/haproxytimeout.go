@@ -38,7 +38,7 @@ func version() string {
 }
 
 var Usage = `
-haproxytimeout - Convert human-readable time durations to millisecond format
+haproxytimeout - Convert human-readable time duration to millisecond format
 
 General Usage:
   haproxytimeout [-help] [-v]

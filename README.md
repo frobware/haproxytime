@@ -36,7 +36,7 @@ $ go install github.com/frobware/haproxytime/cmd/haproxytimeout@latest
 ## Usage
 
 ```console
-haproxytimeout - Convert human-readable time durations to millisecond format
+haproxytimeout - Convert human-readable time duration to millisecond format
 
 General Usage:
   haproxytimeout [-help] [-v]
