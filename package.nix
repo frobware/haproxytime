@@ -6,9 +6,9 @@ buildGoModule {
 
   subPackages = [ "cmd/haproxytimeout" ];
 
-  vendorSha256 = null;
+  vendorHash = null;
 
-  # I really want have git describe available; see
+  # I really want the equivalent of `git describe`; see
   # https://github.com/NixOS/nix/issues/7201.
   ldflags = [
     "-X 'main.buildVersion=${configRevision.lastModifiedDate} ${configRevision.full}'"
