@@ -13,21 +13,22 @@
       lastModifiedDate = self.lastModifiedDate;
     };
 
-    supportedSystems = [
-      "aarch64-darwin"
-      "aarch64-linux"
-      "x86_64-darwin"
-      "x86_64-linux"
-    ];
+    forAllSystems = function: nixpkgs.lib.genAttrs [ "aarch64-darwin" "aarch64-linux" "x86_64-darwin" "x86_64-linux" ] (
+      system: function system nixpkgs.legacyPackages.${system}
+    );
 
-    makePackageForSystem = system: {
-      haproxytimeout = nixpkgs.legacyPackages.${system}.callPackage ./package.nix {
-        inherit configRevision;
-      };
+    overlay = final: prev: {
+      haproxytimeout = final.callPackage ./package.nix { inherit configRevision; };
     };
+  in {
+    overlays.default = overlay;
 
-    makeDevShellForSystem = system: {
-      default = nixpkgs.legacyPackages.${system}.mkShell {
+    packages = forAllSystems (system: pkgs: {
+      default = pkgs.callPackage ./package.nix { inherit configRevision; };
+    });
+
+    devShells = forAllSystems (system: pkgs: {
+      default = pkgs.mkShell {
         packages = with nixpkgs.legacyPackages.${system}; [
           git
           go
@@ -35,18 +36,6 @@
           jq
         ];
       };
-    };
-
-    forEachSupportedSystem = f: nixpkgs.lib.genAttrs supportedSystems (system: f {
-      pkgs = self.inputs.nixpkgs.legacyPackages.${system};
     });
-  in {
-    devShells = nixpkgs.lib.genAttrs supportedSystems makeDevShellForSystem;
-
-    overlays = forEachSupportedSystem ({ pkgs }: (final: prev: {
-      haproxytimeout = self.packages.${pkgs.system}.haproxytimeout;
-    }));
-
-    packages = nixpkgs.lib.genAttrs supportedSystems makePackageForSystem;
   };
 }
