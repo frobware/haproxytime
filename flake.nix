@@ -1,5 +1,5 @@
 {
-  description = "A Nix flake for the haproxytimeout utility.";
+  description = "A Nix flake for the haproxytime utility.";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -22,7 +22,7 @@
       system: function system
     );
   in {
-    defaultPackage = forAllSystems (system: self.packages.${system}.haproxytimeout);
+    defaultPackage = forAllSystems (system: self.packages.${system}.haproxytime);
 
     checks = forAllSystems (system: {
       build = self.defaultPackage.${system};
@@ -40,12 +40,12 @@
     });
 
     overlays.default = final: prev: {
-      haproxytimeout = prev.callPackage ./package.nix { inherit configRevision; };
+      haproxytime = prev.callPackage ./package.nix { inherit configRevision; };
     };
 
     packages = forAllSystems (system: rec {
-      haproxytimeout = (import nixpkgs { inherit system; overlays = [ self.overlays.default ]; }).haproxytimeout;
-      default = haproxytimeout;
+      haproxytime = (import nixpkgs { inherit system; overlays = [ self.overlays.default ]; }).haproxytime;
+      default = haproxytime;
     });
   };
 }

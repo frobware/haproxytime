@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	cmd "github.com/frobware/haproxytime/cmd/haproxytimeout"
+	cmd "github.com/frobware/haproxytime"
 )
 
 // mockFailWriter is an io.Writer implementation that simulates a write failure.
@@ -61,7 +61,7 @@ func TestConvertDuration(t *testing.T) {
 		args:           []string{"-v"},
 		expectedExit:   0,
 		expectedStdout: "",
-		expectedStderr: "haproxytimeout <unknown>",
+		expectedStderr: "haproxytime <unknown>",
 	}, {
 		description:    "Test -m flag",
 		args:           []string{"-m"},

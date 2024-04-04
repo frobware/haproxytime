@@ -1,46 +1,43 @@
-# Parse time durations, with support for days
+# haproxytime
 
-Package haproxytime provides specialised duration parsing
-functionality with features beyond the standard library's
-time.ParseDuration function. It adds support for extended time units
-such as "days", denoted by "d", and optionally allows the parsing of
-composite durations in a single string like "1d5m200ms".
+`haproxytime` is a command-line utility designed to facilitate the
+conversion of human-readable time durations into a format precisely
+represented in milliseconds, tailored specifically for HAProxy
+configurations.
 
-Key Features:
-
-- Supports the following time units: "d" (days), "h" (hours), "m"
-  (minutes), "s" (seconds), "ms" (milliseconds), and "us"
-  (microseconds).
-- Capable of parsing composite durations such as
-  "24d20h31m23s647ms".
-- Ensures parsed durations are non-negative.
-
-The command line utility `haproxytimeout` is an example of using the
-package but also serves to convert human-readable duration values to
-microseconds, suitable for a HAProxy configuration file.
+This tool is useful for developers and administrators who work with
+HAProxy, providing a straightforward mechanism to ensure that timeout
+configurations are accurately specified in a format that HAProxy can
+understand. Whether you're inputting durations directly or piping them
+from standard input, `haproxytime` streamlines the process of dealing
+with time durations, supporting a wide range of units from days to
+microseconds. With features to display durations in both machine- and
+human-readable formats, as well as the ability to print the maximum
+HAProxy timeout value, `haproxytime` minimises the risk of
+configuration errors in your HAProxy setup.
 
 ## Install
 
-To install with versioning information
+To install without versioning information:
 
 ```sh
-$ go install -ldflags "-X 'main.buildVersion=$(git describe --tags --abbrev=8 --dirty --always --long)'" github.com/frobware/haproxytime/cmd/haproxytimeout@latest
+$ go install github.com/frobware/haproxytime@latest
 ```
 
-To install without versioning information
+To install with versioning information:
 
 ```sh
-$ go install github.com/frobware/haproxytime/cmd/haproxytimeout@latest
+$ go install -ldflags "-X 'main.buildVersion=$(git describe --tags --abbrev=8 --dirty --always --long)'" github.com/frobware/haproxytime@latest
 ```
 
 ## Usage
 
 ```console
-haproxytimeout - Convert human-readable time duration to millisecond format
+haproxytime - Convert human-readable time duration to millisecond format
 
 General Usage:
-  haproxytimeout [-help] [-v]
-  haproxytimeout [-h] [-m] [<duration>]
+  haproxytime [-help] [-v]
+  haproxytime [-h] [-m] [<duration>]
 
 Usage:
   -help Show usage information
@@ -63,15 +60,15 @@ Available units for time durations:
 A duration value without a unit defaults to milliseconds.
 
 Examples:
-  haproxytimeout -m           -> Print the maximum HAProxy duration.
-  haproxytimeout 2h30m5s      -> Convert duration to milliseconds.
-  haproxytimeout -h 4500000   -> Convert 4500000ms to a human-readable format.
-  echo 150s | haproxytimeout  -> Convert 150 seconds to milliseconds.
-
+  haproxytime -m           -> Print the maximum HAProxy duration.
+  haproxytime 2h30m5s      -> Convert duration to milliseconds.
+  haproxytime -h 4500000   -> Convert 4500000ms to a human-readable format.
+  echo 150s | haproxytime  -> Convert 150 seconds to milliseconds.
 ```
 
-## Dev Build
+## Build
 
 ```sh
 $ make
+$ make install
 ```

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/frobware/haproxytime"
+	"github.com/frobware/comptime"
 )
 
 // maxTimeout represents the maximum permissible timeout duration for
@@ -38,11 +38,11 @@ func version() string {
 }
 
 var Usage = `
-haproxytimeout - Convert human-readable time duration to millisecond format
+haproxytime - Convert human-readable time duration to millisecond format
 
 General Usage:
-  haproxytimeout [-help] [-v]
-  haproxytimeout [-h] [-m] [<duration>]
+  haproxytime [-help] [-v]
+  haproxytime [-h] [-m] [<duration>]
 
 Usage:
   -help Show usage information
@@ -65,10 +65,10 @@ Available units for time durations:
 A duration value without a unit defaults to milliseconds.
 
 Examples:
-  haproxytimeout -m           -> Print the maximum HAProxy duration.
-  haproxytimeout 2h30m5s      -> Convert duration to milliseconds.
-  haproxytimeout -h 4500000   -> Convert 4500000ms to a human-readable format.
-  echo 150s | haproxytimeout  -> Convert 150 seconds to milliseconds.`[1:]
+  haproxytime -m           -> Print the maximum HAProxy duration.
+  haproxytime 2h30m5s      -> Convert duration to milliseconds.
+  haproxytime -h 4500000   -> Convert 4500000ms to a human-readable format.
+  echo 150s | haproxytime  -> Convert 150 seconds to milliseconds.`[1:]
 
 // ExitHandler defines an interface for handling exits.
 type ExitHandler interface {
@@ -221,15 +221,15 @@ func output(w io.Writer, exitHandler ExitHandler, duration time.Duration, printH
 // printPositionalError formats and outputs an error message to the
 // provided io.Writer, along with the position at which the error
 // occurred in the input argument. It supports error types with
-// positional information, such as haproxytime.SyntaxError,
-// haproxytime.OverflowError, and haproxytime.RangeError.
+// positional information, such as comptime.SyntaxError,
+// comptime.OverflowError, and comptime.RangeError.
 //
 // Parameters:
 //   - w: the io.Writer to output the error message, usually os.Stderr.
 //   - exitHandler: the ExitHandler to handle exit scenarios.
 //   - err: the error that occurred, expected to be of a type that
 //     contains positional information, typically
-//     *haproxytime.{OverflowError,RangeError,SyntaxError}.
+//     *comptime.{OverflowError,RangeError,SyntaxError}.
 //   - arg: the input argument string where the error occurred.
 //
 // The function uses the errors.As method to check if the error
@@ -292,7 +292,7 @@ func readInput(rdr io.Reader, remainingArgs []string, maxBytes int64) (string, e
 	return readAll(rdr, maxBytes)
 }
 
-// convertDuration is the primary function for the haproxytimeout
+// convertDuration is the primary function for the haproxytime
 // tool. It parses command-line flags, reads input for a duration
 // string (either from arguments or stdin), converts it into a Go
 // time.Duration object, and then outputs the result.
@@ -318,7 +318,7 @@ func readInput(rdr io.Reader, remainingArgs []string, maxBytes int64) (string, e
 // and returns 1. Otherwise, it writes the converted or maximum
 // duration to stdout and returns 0.
 func convertDuration(rdr io.Reader, stdout, stderr io.Writer, args []string, exitHandler ExitHandler) int {
-	fs := flag.NewFlagSet("haproxytimeout", flag.ContinueOnError)
+	fs := flag.NewFlagSet("haproxytime", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 
 	var showHelp, showVersion, printHuman, printMax bool
@@ -339,7 +339,7 @@ func convertDuration(rdr io.Reader, stdout, stderr io.Writer, args []string, exi
 	}
 
 	if showVersion {
-		safeFprintf(stderr, exitHandler, "haproxytimeout %s\n", version())
+		safeFprintf(stderr, exitHandler, "haproxytime %s\n", version())
 		return 0
 	}
 
@@ -354,7 +354,7 @@ func convertDuration(rdr io.Reader, stdout, stderr io.Writer, args []string, exi
 		return 1
 	}
 
-	duration, err := haproxytime.ParseDuration(input, haproxytime.Millisecond, haproxytime.ParseModeMultiUnit, func(position int, value time.Duration, totalSoFar time.Duration) bool {
+	duration, err := comptime.ParseDuration(input, comptime.Millisecond, comptime.ParseModeMultiUnit, func(position int, value time.Duration, totalSoFar time.Duration) bool {
 		return value+totalSoFar <= maxTimeout
 	})
 

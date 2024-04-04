@@ -19,10 +19,11 @@
 
 # Go workspace file
 go.work
-/haproxytimeout
+/haproxytime
 /cpu.pprof
 /.idea
 /.direnv/
 
 # nix build output
 /result
+/haproxytime

@@ -1,4 +1,4 @@
-// Package haproxytime provides specialised duration parsing
+// Package comptime provides specialised duration parsing
 // functionality with features beyond the standard library's
 // time.ParseDuration function. It adds support for extended time
 // units such as "days", denoted by "d", and optionally allows the
@@ -19,7 +19,7 @@
 //     constraints on parsed durations through a BoundsChecker callback.
 //     This enables early termination of the parsing process based on
 //     user-defined limits.
-package haproxytime
+package comptime
 
 import (
 	"errors"
@@ -252,7 +252,7 @@ func consumeNumber(input string, start int) (int64, int, consumeNumberError) {
 //
 // Example:
 //
-//	if errors.Is(err, &haproxytime.SyntaxError{}) {
+//	if errors.Is(err, &comptime.SyntaxError{}) {
 //	    // handle SyntaxError
 //	}
 func (e *SyntaxError) Is(target error) bool {
@@ -302,7 +302,7 @@ func (e *SyntaxError) Cause() SyntaxErrorCause {
 //
 // Example:
 //
-//	if errors.Is(err, &haproxytime.RangeError{}) {
+//	if errors.Is(err, &comptime.RangeError{}) {
 //	    // handle RangeError
 //	}
 func (e *RangeError) Is(target error) bool {
@@ -324,7 +324,7 @@ func (e *RangeError) Position() int {
 //
 // Example:
 //
-//	if errors.Is(err, &haproxytime.OverflowError{}) {
+//	if errors.Is(err, &comptime.OverflowError{}) {
 //	    // handle OverflowError
 //	}
 func (e *OverflowError) Is(target error) bool {

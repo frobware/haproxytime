@@ -4,8 +4,6 @@ buildGoModule {
   name = "haproxytime";
   src = ./.;
 
-  subPackages = [ "cmd/haproxytimeout" ];
-
   nativeBuildInputs = with pkgs; [
     git
     go
