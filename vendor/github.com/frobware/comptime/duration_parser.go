@@ -1,8 +1,9 @@
-// Package comptime provides specialised duration parsing
-// functionality with features beyond the standard library's
-// time.ParseDuration function. It adds support for extended time
-// units such as "days", denoted by "d", and optionally allows the
-// parsing of composite durations in a single string like "1d5m200ms".
+// Package comptime (composite time) offers functionality for parsing
+// durations, extending the capabilities of the standard library's
+// `time.ParseDuration` function. It introduces support for an
+// additional time unit, 'days' (denoted by 'd'), and enables the
+// parsing of composite durations from a single string, such as
+// '1d5m200ms'.
 //
 // Key Features:
 //
